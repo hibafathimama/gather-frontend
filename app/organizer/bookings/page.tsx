@@ -77,235 +77,257 @@ export default function OrganizerBookingsPage() {
     fetchOrganizerBookings();
   }, []);
 
+  // Download the report of bookings in CSV format
+  const downloadBookingReport = () => {
+    if (bookings.length === 0) {
+      alert("There are no bookings to download.");
+      return;
+    }
 
-  //download the report of bookings in csv format
+    const headers = [
+      "Booking ID",
+      "Customer Name",
+      "Email",
+      "Event Name",
+      "Event Date",
+      "Ticket Type",
+      "Quantity",
+      "Ticket Price",
+      "Total Price",
+      "Status",
+    ];
 
-const downloadBookingReport = () => {
-  if (bookings.length === 0) {
-    alert("There are no bookings to download.");
-    return;
-  }
+    const escapeCSV = (value: string | number) => {
+      const text = String(value ?? "");
+      return `"${text.replace(/"/g, '""')}"`;
+    };
 
-  // CSV column headings
-  const headers = [
-    "Booking ID",
-    "Customer Name",
-    "Email",
-    "Event Name",
-    "Event Date",
-    "Ticket Type",
-    "Quantity",
-    "Ticket Price",
-    "Total Price",
-    "Status",
-  ];
+    const rows = bookings.map((booking) => {
+      const customerName = booking.user
+        ? `${booking.user.firstName || ""} ${booking.user.lastName || ""}`.trim()
+        : "Unknown customer";
 
-  // Escape special characters so the CSV remains valid
-  const escapeCSV = (value: string | number) => {
-    const text = String(value ?? "");
-    return `"${text.replace(/"/g, '""')}"`;
+      return [
+        booking.bookingId || booking._id,
+        customerName,
+        booking.user?.email || "",
+        booking.event?.eventName || "Event unavailable",
+        booking.event?.date
+          ? new Date(booking.event.date).toLocaleDateString("en-GB")
+          : "",
+        booking.ticketType || "Standard",
+        booking.quantity,
+        booking.quantity > 0
+          ? booking.totalPrice / booking.quantity
+          : 0,
+        booking.totalPrice,
+        booking.status || "confirmed",
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map(escapeCSV).join(","))
+      .join("\r\n");
+
+    const blob = new Blob(["\uFEFF", csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "organizer-booking-report.csv";
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
   };
 
-  // Convert booking data into CSV rows
-  const rows = bookings.map((booking) => {
-    const customerName = booking.user
-      ? `${booking.user.firstName || ""} ${booking.user.lastName || ""}`.trim()
-      : "Unknown customer";
-
-    return [
-      booking.bookingId || booking._id,
-      customerName,
-      booking.user?.email || "",
-      booking.event?.eventName || "Event unavailable",
-      booking.event?.date
-        ? new Date(booking.event.date).toLocaleDateString("en-GB")
-        : "",
-      booking.ticketType || "Standard",
-      booking.quantity,
-      booking.quantity > 0
-        ? booking.totalPrice / booking.quantity
-        : 0,
-      booking.totalPrice,
-      booking.status || "confirmed",
-    ];
-  });
-
-  const csvContent = [headers, ...rows]
-    .map((row) => row.map(escapeCSV).join(","))
-    .join("\r\n");
-
-  // Add BOM so Excel handles UTF-8 text correctly
-  const blob = new Blob(["\uFEFF", csvContent], {
-    type: "text/csv;charset=utf-8;",
-  });
-
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = "organizer-booking-report.csv";
-
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  URL.revokeObjectURL(url);
-};
-
-
   return (
-    <main className="min-h-screen bg-gray-100 p-6">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <h1 className="text-3xl font-bold text-gray-800">
-            Manage Bookings
-            </h1>
+    <>
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 
-            <p className="mt-2 text-gray-600">
-            View and download bookings for your events.
-            </p>
-        </div>
+        .editorial-heading {
+          font-family: 'Cormorant Garamond', Georgia, serif;
+          letter-spacing: -0.02em;
+        }
+      `}</style>
 
-        <div className="flex flex-wrap gap-3">
-            <button
-            type="button"
-            onClick={downloadBookingReport}
-            disabled={loading || bookings.length === 0}
-            className="rounded-lg bg-green-700 px-5 py-3 font-medium text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-gray-400"
-            >
-            Download CSV Report
-            </button>
+      <main className="min-h-screen bg-[#FFECD1] p-6 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
+        <div className="mx-auto max-w-7xl">
+          
+          {/* Top Header Section */}
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#F5D8B3] pb-6">
+            <div>
+              <span className="mb-2 inline-block rounded-lg bg-[#3E000C]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#3E000C]">
+                Organizer Portal
+              </span>
+              <h1 className="editorial-heading text-4xl font-bold tracking-tight text-[#3E000C] sm:text-5xl">
+                Manage Bookings
+              </h1>
+              <p className="mt-1 text-sm text-stone-600">
+                Monitor ticket purchases, track customer engagement, and export data reports.
+              </p>
+            </div>
 
-            <Link
-            href="/organizer/dashboard"
-            className="rounded-lg border border-gray-300 bg-white px-5 py-3 font-medium text-gray-700 hover:bg-gray-50"
-            >
-            Back to Dashboard
-            </Link>
-        </div>
-        </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={downloadBookingReport}
+                disabled={loading || bookings.length === 0}
+                className="inline-flex items-center gap-2 rounded-2xl bg-[#3E000C] px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-white shadow-md shadow-[#3E000C]/20 transition-all hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:shadow-none"
+              >
+                <span>📥</span> Download CSV Report
+              </button>
 
-
-
-
-        <section className="mb-6 rounded-xl bg-white p-6 shadow">
-          <p className="text-sm text-gray-500">Total Bookings</p>
-
-          <p className="mt-2 text-3xl font-bold text-gray-800">
-            {loading ? "..." : bookings.length}
-          </p>
-        </section>
-
-        {loading && (
-          <p className="text-gray-600">Loading bookings...</p>
-        )}
-
-        {error && (
-          <p className="rounded-lg bg-red-100 p-4 text-red-700">
-            {error}
-          </p>
-        )}
-
-        {!loading && !error && bookings.length === 0 && (
-          <div className="rounded-xl bg-white p-8 text-center shadow">
-            <h2 className="text-xl font-semibold text-gray-800">
-              No bookings yet
-            </h2>
-
-            <p className="mt-2 text-gray-600">
-              Bookings for your events will appear here.
-            </p>
+              <Link
+                href="/organizer/dashboard"
+                className="inline-flex items-center gap-2 rounded-2xl border border-[#F5D8B3] bg-white px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-[#3E000C] shadow-sm transition-all hover:bg-[#FFECD1]/40"
+              >
+                <span>←</span> Back to Dashboard
+              </Link>
+            </div>
           </div>
-        )}
 
-        {!loading && !error && bookings.length > 0 && (
-          <div className="overflow-x-auto rounded-xl bg-white shadow">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="p-4 text-sm font-semibold text-gray-700">
-                    Booking ID
-                  </th>
-                  <th className="p-4 text-sm font-semibold text-gray-700">
-                    Customer
-                  </th>
-                  <th className="p-4 text-sm font-semibold text-gray-700">
-                    Event
-                  </th>
-                  <th className="p-4 text-sm font-semibold text-gray-700">
-                    Tickets
-                  </th>
-                  <th className="p-4 text-sm font-semibold text-gray-700">
-                    Total Price
-                  </th>
-                  <th className="p-4 text-sm font-semibold text-gray-700">
-                    Status
-                  </th>
-                  <th className="p-4 text-sm font-semibold text-gray-700">
-                    Action
+          {/* Metrics Card */}
+          <section className="mb-8 rounded-3xl border border-[#F5D8B3] bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                  Total Bookings Secured
+                </p>
+                <p className="editorial-heading mt-2 text-4xl font-bold tracking-tight text-[#3E000C]">
+                  {loading ? "..." : bookings.length}
+                </p>
+              </div>
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#3E000C]/10 text-2xl text-[#3E000C]">
+                🎫
+              </div>
+            </div>
+          </section>
+
+          {/* Loading, Error & Empty States */}
+          {loading && (
+            <div className="py-20 text-center text-stone-600 font-medium">
+              Loading booking records...
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-medium text-red-600 shadow-sm">
+              ⚠️ {error}
+            </div>
+          )}
+
+          {!loading && !error && bookings.length === 0 && (
+            <div className="rounded-3xl border border-[#F5D8B3] bg-white p-16 text-center shadow-sm">
+              <div className="text-4xl mb-3">📭</div>
+              <h2 className="editorial-heading text-2xl font-bold text-[#3E000C]">
+                No bookings found
+              </h2>
+              <p className="mt-2 text-sm text-stone-600">
+                Customer bookings for your scheduled events will display here once completed.
+              </p>
+            </div>
+          )}
+
+          {/* Bookings Data Table */}
+          {!loading && !error && bookings.length > 0 && (
+            <div className="overflow-x-auto rounded-3xl border border-[#F5D8B3] bg-white shadow-sm">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-[#3E000C] text-[#FFECD1]">
+                  <tr>
+                    <th className="p-4.5 text-xs font-bold uppercase tracking-wider">
+                      Booking ID
                     </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {bookings.map((booking) => (
-                  <tr key={booking._id} className="border-t">
-                    <td className="p-4 text-sm text-gray-700">
-                      {booking.bookingId || booking._id}
-                    </td>
-
-                    <td className="p-4">
-                      <p className="font-medium text-gray-800">
-                        {booking.user
-                          ? `${booking.user.firstName || ""} ${booking.user.lastName || ""}`.trim() ||
-                            "Unknown customer"
-                          : "Unknown customer"}
-                      </p>
-
-                      <p className="text-sm text-gray-500">
-                        {booking.user?.email || "No email"}
-                      </p>
-                    </td>
-
-                    <td className="p-4 text-gray-700">
-                      {booking.event?.eventName || "Event unavailable"}
-                    </td>
-
-                    <td className="p-4 text-gray-700">
-                      {booking.quantity}
-                    </td>
-
-                    <td className="p-4 font-semibold text-gray-800">
-                      ₹{booking.totalPrice}
-                    </td>
-
-                    <td className="p-4">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          booking.status === "cancelled"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
-                      >
-                        {booking.status || "Confirmed"}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                    <Link
-                        href={`/organizer/bookings/${booking._id}`}
-                        className="font-medium text-blue-700 hover:underline"
-                    >
-                        View Details
-                    </Link>
-                    </td>
+                    <th className="p-4.5 text-xs font-bold uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="p-4.5 text-xs font-bold uppercase tracking-wider">
+                      Event Name
+                    </th>
+                    <th className="p-4.5 text-xs font-bold uppercase tracking-wider">
+                      Qty
+                    </th>
+                    <th className="p-4.5 text-xs font-bold uppercase tracking-wider">
+                      Total Price
+                    </th>
+                    <th className="p-4.5 text-xs font-bold uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="p-4.5 text-xs font-bold uppercase tracking-wider text-right">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </main>
+                </thead>
+
+                <tbody className="divide-y divide-stone-100 text-sm">
+                  {bookings.map((booking) => (
+                    <tr 
+                      key={booking._id} 
+                      className="transition-colors hover:bg-stone-50"
+                    >
+                      <td className="p-4.5 font-mono text-xs font-semibold text-stone-500">
+                        #{booking.bookingId || booking._id.slice(-6)}
+                      </td>
+
+                      <td className="p-4.5">
+                        <p className="font-bold text-stone-900">
+                          {booking.user
+                            ? `${booking.user.firstName || ""} ${booking.user.lastName || ""}`.trim() ||
+                              "Unknown customer"
+                            : "Unknown customer"}
+                        </p>
+                        <p className="text-xs text-stone-500">
+                          {booking.user?.email || "No email available"}
+                        </p>
+                      </td>
+
+                      <td className="p-4.5 font-semibold text-[#3E000C]">
+                        {booking.event?.eventName || "Event unavailable"}
+                      </td>
+
+                      <td className="p-4.5 font-bold text-stone-900">
+                        {booking.quantity}
+                      </td>
+
+                      <td className="p-4.5 font-black text-[#3E000C]">
+                        ₹{booking.totalPrice}
+                      </td>
+
+                      <td className="p-4.5">
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                            booking.status?.toLowerCase() === "cancelled"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full ${booking.status?.toLowerCase() === "cancelled" ? "bg-red-500" : "bg-emerald-500"}`} />
+                          {booking.status || "Confirmed"}
+                        </span>
+                      </td>
+
+                      <td className="p-4.5 text-right">
+                        <Link
+                          href={`/organizer/bookings/${booking._id}`}
+                          className="inline-flex items-center justify-center rounded-xl bg-white border border-[#3E000C] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#3E000C] shadow-sm transition-all hover:bg-[#3E000C] hover:text-[#FFECD1]"
+                        >
+                          View Details →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </main>
+    </>
   );
 }

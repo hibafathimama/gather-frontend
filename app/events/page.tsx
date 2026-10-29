@@ -2,13 +2,31 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  Ticket,
+  Heart,
+  LayoutDashboard,
+  CalendarDays,
+  Clock,
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  AlertCircle,
+  CalendarX2,
+} from "lucide-react";
 import api from "@/lib/api";
 import type { EventType } from "@/types/event";
 
 export default function EventsPage() {
   const [events, setEvents] = useState<EventType[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [favoriteMessage, setFavoriteMessage] = useState("");
+  const [updatingFavoriteId, setUpdatingFavoriteId] = useState<string | null>(
+    null
+  );
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -26,14 +44,16 @@ export default function EventsPage() {
           return;
         }
 
+        const headers = {
+          Authorization: `Bearer ${token}`,
+        };
+
         const response = await api.get("/events/getevent", {
           params: {
             page,
             limit: 10,
           },
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers,
           withCredentials: true,
         });
 
@@ -43,14 +63,30 @@ export default function EventsPage() {
           throw new Error(result.message || "Failed to fetch events.");
         }
 
-        const eventList = Array.isArray(result.data) ? result.data : [];
-
-        setEvents(eventList);
+        setEvents(Array.isArray(result.data) ? result.data : []);
         setTotalPages(result.pagination?.totalPages || 1);
-      } catch (err: unknown) {
-        console.error("Error fetching events:", err);
 
-        setEvents([]);
+        // Fetch the logged-in user's wishlist.
+        const favoritesResponse = await api.get("/favorites", {
+          headers,
+          withCredentials: true,
+        });
+
+        const favorites = Array.isArray(favoritesResponse.data.data)
+          ? favoritesResponse.data.data
+          : [];
+
+        const ids = favorites
+          .map((favorite: { event?: string | { _id: string } }) =>
+            typeof favorite.event === "string"
+              ? favorite.event
+              : favorite.event?._id
+          )
+          .filter((id: string | undefined): id is string => Boolean(id));
+
+        setFavoriteIds(ids);
+      } catch (err: unknown) {
+        console.error("Error fetching events or wishlist:", err);
 
         if (typeof err === "object" && err !== null && "response" in err) {
           const apiError = err as {
@@ -62,14 +98,14 @@ export default function EventsPage() {
 
           setError(
             apiError.response?.data?.message ||
-              `Failed to fetch events. Status: ${
+              `Failed to fetch data. Status: ${
                 apiError.response?.status || "unknown"
               }`
           );
         } else if (err instanceof Error) {
           setError(err.message);
         } else {
-          setError("Something went wrong while fetching events.");
+          setError("Something went wrong.");
         }
       } finally {
         setLoading(false);
@@ -79,6 +115,68 @@ export default function EventsPage() {
     getAllEvents();
   }, [page]);
 
+  const handleFavorite = async (eventId: string) => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setFavoriteMessage("Please log in to manage your wishlist.");
+      return;
+    }
+
+    try {
+      setUpdatingFavoriteId(eventId);
+      setFavoriteMessage("");
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+      };
+
+      if (favoriteIds.includes(eventId)) {
+        await api.delete(`/favorites/${eventId}`, {
+          headers,
+          withCredentials: true,
+        });
+
+        setFavoriteIds((previous) => previous.filter((id) => id !== eventId));
+
+        setFavoriteMessage("Event removed from your wishlist.");
+      } else {
+        await api.post(
+          "/favorites",
+          { eventId },
+          {
+            headers,
+            withCredentials: true,
+          }
+        );
+
+        setFavoriteIds((previous) =>
+          previous.includes(eventId) ? previous : [...previous, eventId]
+        );
+
+        setFavoriteMessage("Event added to your wishlist!");
+      }
+    } catch (err: unknown) {
+      console.error("Wishlist update failed:", err);
+
+      if (typeof err === "object" && err !== null && "response" in err) {
+        const apiError = err as {
+          response?: {
+            data?: { message?: string };
+          };
+        };
+
+        setFavoriteMessage(
+          apiError.response?.data?.message || "Unable to update your wishlist."
+        );
+      } else {
+        setFavoriteMessage("Unable to connect to the server.");
+      }
+    } finally {
+      setUpdatingFavoriteId(null);
+    }
+  };
+
   const getImageUrl = (image?: string | null) => {
     if (!image) return "";
 
@@ -87,8 +185,7 @@ export default function EventsPage() {
     }
 
     const backendUrl = (
-      process.env.NEXT_PUBLIC_BACKEND_URL ||
-      "http://localhost:5000/api"
+      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api"
     ).replace(/\/api\/?$/, "");
 
     const imagePath = image.startsWith("/") ? image : `/${image}`;
@@ -97,158 +194,227 @@ export default function EventsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFECD1] px-4 py-8 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
+    <div className="min-h-screen bg-[#FFECD1] px-4 py-6 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
       <div className="mx-auto max-w-7xl">
-        
-        {/* Header Navigation */}
-        <header className="mb-8 flex items-center justify-between border-b border-[#F5D8B3] pb-6">
-          <Link href="/user/dashboard" className="flex items-center gap-3 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#3E000C] text-lg font-bold text-[#FFECD1] shadow-sm transition-transform group-hover:scale-105">
-              ✦
+        {/* Header */}
+        <header className="mb-8 flex items-center justify-between border-b border-[#F5D8B3] pb-5">
+          <Link href="/user/dashboard" className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3E000C] text-[#FFECD1]">
+              <Ticket className="h-5 w-5" />
             </div>
-            <div>
-              <h1 className="text-xl font-black tracking-tight text-[#3E000C]">
-                Gather<span className="text-[#3E000C]/70">.</span>
+            <div className="leading-tight">
+              <h1 className="text-lg font-bold tracking-tight text-[#3E000C]">
+                Gather
               </h1>
-              <p className="text-[11px] font-medium tracking-wide text-stone-500 uppercase">
-                Explore Platform
-              </p>
+              <p className="text-xs text-stone-600">Event platform</p>
             </div>
           </Link>
 
-          <Link
-            href="/user/dashboard"
-            className="rounded-xl border border-[#3E000C]/20 bg-white px-5 py-2.5 text-sm font-bold text-[#3E000C] transition-all hover:bg-[#3E000C] hover:text-white shadow-sm"
-          >
-            Dashboard
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/user/wishlist"
+              aria-label="My wishlist"
+              title="My wishlist"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-700 transition-colors hover:border-[#3E000C] hover:bg-[#FFECD1]/40"
+            >
+              <Heart className="h-5 w-5" aria-hidden="true" />
+            </Link>
+
+            <Link
+              href="/user/dashboard"
+              className="flex h-10 items-center gap-2 rounded-lg border border-[#3E000C]/25 bg-white px-3.5 text-sm font-medium text-[#3E000C] transition-colors hover:bg-[#3E000C] hover:text-white"
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </Link>
+          </div>
         </header>
 
-        {/* Page Title Section */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-extrabold tracking-tight text-[#3E000C]">
-            Explore All Events
+        {/* Page title */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold tracking-tight text-[#3E000C] sm:text-3xl">
+            Explore events
           </h2>
-          <p className="mt-1 text-sm text-stone-600">
-            Discover upcoming live experiences and find your next memory.
+          <p className="mt-1 text-sm text-stone-600 sm:text-base">
+            Find upcoming concerts, workshops and seminars near you.
           </p>
         </div>
 
-        {/* Content States */}
+        {favoriteMessage && (
+          <p
+            role="status"
+            aria-live="polite"
+            className="mb-5 rounded-lg border border-[#F5D8B3] bg-white px-4 py-3 text-sm text-[#3E000C]"
+          >
+            {favoriteMessage}
+          </p>
+        )}
+
         {loading ? (
-          <div className="py-20 text-center text-stone-600 font-medium">
+          <div className="flex items-center justify-center gap-2 py-20 text-stone-600">
+            <Loader2 className="h-5 w-5 animate-spin" />
             Loading events...
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-600 shadow-sm">
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
           </div>
         ) : events.length === 0 ? (
-          <div className="rounded-3xl border border-[#F5D8B3] bg-white p-12 text-center shadow-sm">
-            <p className="text-stone-500 font-medium">No active events available.</p>
+          <div className="rounded-xl border border-[#F5D8B3] bg-white p-12 text-center">
+            <CalendarX2 className="mx-auto mb-3 h-8 w-8 text-[#3E000C]/60" />
+            <p className="text-stone-600">
+              There are no active events right now. Check back soon.
+            </p>
           </div>
         ) : (
           <>
-            {/* Event Cards Grid */}
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {events.map((event) => {
                 const imageUrl = getImageUrl(event.image);
+                const isFavorite = favoriteIds.includes(event._id);
+                const isUpdating = updatingFavoriteId === event._id;
 
                 return (
-                  <div
+                  <article
                     key={event._id}
-                    className="group overflow-hidden rounded-2xl border border-[#F5D8B3] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl flex flex-col justify-between"
+                    className="flex flex-col overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm transition-shadow hover:shadow-md"
                   >
-                    {/* Event Image & Floating Badges */}
-                    <div className="relative h-52 w-full overflow-hidden bg-stone-100">
+                    <div className="relative h-48 w-full overflow-hidden bg-stone-100">
                       {imageUrl ? (
                         <img
                           src={imageUrl}
                           alt={event.eventName}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          className="h-full w-full object-cover"
                           onError={(e) => {
-                            console.error("Failed to load event image:", imageUrl);
-                            (e.target as HTMLElement).style.display = "none";
+                            console.error(
+                              "Failed to load event image:",
+                              imageUrl
+                            );
+                            e.currentTarget.style.display = "none";
                           }}
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-stone-400">
-                          No event image available
+                        <div className="flex h-full w-full items-center justify-center text-sm text-stone-500">
+                          No image available
                         </div>
                       )}
 
-                      {/* Category Badge */}
                       {event.category && (
-                        <span className="absolute top-3 left-3 rounded-lg bg-[#3E000C]/90 px-3 py-1 text-xs font-bold tracking-wide text-[#FFECD1] backdrop-blur-md shadow-sm">
+                        <span className="absolute left-3 top-3 rounded-md bg-[#3E000C] px-2.5 py-1 text-xs font-medium text-[#FFECD1]">
                           {event.category}
                         </span>
                       )}
 
-                      {/* Ticket Price Badge */}
-                      <span className="absolute top-3 right-3 rounded-lg bg-white/95 px-3 py-1 text-xs font-extrabold text-[#3E000C] backdrop-blur-md shadow-sm">
-                        {event.ticketPrice === undefined || event.ticketPrice === 0
+                      <span className="absolute right-3 top-3 rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-[#3E000C] shadow-sm">
+                        {event.ticketPrice === undefined ||
+                        event.ticketPrice === 0
                           ? "Free"
                           : `₹${event.ticketPrice}`}
                       </span>
+
+                      {/* Wishlist heart button */}
+                      <button
+                        type="button"
+                        onClick={() => handleFavorite(event._id)}
+                        disabled={isUpdating}
+                        aria-label={
+                          isFavorite
+                            ? "Remove from wishlist"
+                            : "Add to wishlist"
+                        }
+                        aria-pressed={isFavorite}
+                        title={
+                          isFavorite
+                            ? "Remove from wishlist"
+                            : "Add to wishlist"
+                        }
+                        className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-md transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Heart
+                          className={`h-5 w-5 ${
+                            isFavorite
+                              ? "fill-red-600 text-red-600"
+                              : "text-stone-500"
+                          }`}
+                        />
+                      </button>
                     </div>
 
-                    {/* Card Body Details */}
-                    <div className="p-5 flex flex-col flex-1 justify-between space-y-4">
+                    <div className="flex flex-1 flex-col gap-4 p-5">
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs font-semibold text-stone-500">
-                          <span>📅 {new Date(event.date).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</span>
-                          {event.venue && (
-                            <span className="truncate max-w-[130px]" title={event.venue}>
-                              📍 {event.venue}
-                            </span>
-                          )}
-                        </div>
-
-                        <h3 className="text-lg font-bold tracking-tight text-[#3E000C] line-clamp-1">
+                        <h3
+                          className="line-clamp-1 text-lg font-semibold text-[#3E000C]"
+                          title={event.eventName}
+                        >
                           {event.eventName}
                         </h3>
 
-                        {event.time && (
-                          <p className="text-xs text-stone-600 font-medium">🕒 Time: {event.time}</p>
-                        )}
+                        <div className="flex flex-col gap-1 text-sm text-stone-600">
+                          <span className="flex items-center gap-2">
+                            <CalendarDays className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+                            {new Date(event.date).toLocaleDateString("en-IN", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+
+                          {event.time && (
+                            <span className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+                              {event.time}
+                            </span>
+                          )}
+
+                          {event.venue && (
+                            <span className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+                              <span className="truncate" title={event.venue}>
+                                {event.venue}
+                              </span>
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Action Links */}
-                      <div className="pt-3 border-t border-stone-100">
-                        <Link
-                          href={`/events/${event._id}`}
-                          className="flex w-full items-center justify-center rounded-xl bg-[#3E000C] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#2B0008]"
-                        >
-                          View Details
-                        </Link>
-                      </div>
+                      <Link
+                        href={`/events/${event._id}`}
+                        className="mt-auto flex w-full items-center justify-center rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
+                      >
+                        View details
+                      </Link>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
 
-            {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="mt-10 flex flex-wrap items-center justify-center gap-4 pb-8">
                 <button
                   onClick={() => setPage((current) => current - 1)}
                   disabled={page === 1 || loading}
-                  className="rounded-xl border border-[#3E000C] bg-white px-6 py-3 text-sm font-bold text-[#3E000C] shadow-sm transition-all hover:bg-[#3E000C]/5 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[#3E000C] bg-white px-4 py-2.5 text-sm font-semibold text-[#3E000C] transition hover:bg-[#3E000C]/5 disabled:cursor-not-allowed disabled:opacity-40"
                 >
+                  <ChevronLeft className="h-4 w-4" />
                   Previous
                 </button>
 
-                <span className="font-bold text-stone-800 text-sm">
+                <span className="text-sm font-medium text-stone-700">
                   Page {page} of {totalPages}
                 </span>
 
                 <button
                   onClick={() => setPage((current) => current + 1)}
                   disabled={page === totalPages || loading}
-                  className="rounded-xl bg-[#3E000C] px-6 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex items-center gap-1 rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Next
+                  <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
             )}

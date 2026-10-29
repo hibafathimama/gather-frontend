@@ -2,6 +2,21 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  Ticket,
+  Compass,
+  CalendarDays,
+  Clock,
+  MapPin,
+  Hash,
+  Users,
+  QrCode,
+  ArrowLeft,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+  TicketX,
+} from "lucide-react";
 
 interface EventDetails {
   _id: string;
@@ -92,18 +107,13 @@ export default function MyBookingsPage() {
 
         const token = localStorage.getItem("token");
 
-        const response = await fetch(
-          `${backendUrl}/bookings/getmybookings`,
-          {
-            method: "GET",
-            headers: token
-              ? { Authorization: `Bearer ${token}` }
-              : {},
-            credentials: "include",
-            cache: "no-store",
-            signal: controller.signal,
-          }
-        );
+        const response = await fetch(`${backendUrl}/bookings/getmybookings`, {
+          method: "GET",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: "include",
+          cache: "no-store",
+          signal: controller.signal,
+        });
 
         const contentType = response.headers.get("content-type") || "";
 
@@ -116,9 +126,7 @@ export default function MyBookingsPage() {
         const result: ApiResponse = await response.json();
 
         if (!response.ok) {
-          throw new Error(
-            result.message || "Failed to fetch your bookings."
-          );
+          throw new Error(result.message || "Failed to fetch your bookings.");
         }
 
         const bookingData = Array.isArray(result.data)
@@ -154,67 +162,94 @@ export default function MyBookingsPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#FFECD1] p-8 text-[#3E000C] font-semibold">
-        <p className="text-center">Loading your bookings...</p>
+      <main className="flex min-h-screen items-center justify-center bg-[#FFECD1] p-8 text-[#3E000C]">
+        <p className="flex items-center gap-2 font-medium">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Loading your bookings...
+        </p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#FFECD1] px-4 py-8 sm:px-8 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
+    <main className="min-h-screen bg-[#FFECD1] px-4 py-6 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1] sm:px-8">
       <div className="mx-auto max-w-5xl">
-
-        <header className="my-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#F5D8B3] pb-6">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-[#3E000C]">
-              My Bookings
-            </h1>
-            <p className="mt-1 text-sm text-stone-600">
-              View your booked events and ticket details.
-            </p>
-          </div>
+        {/* Header */}
+        <header className="mb-8 flex items-center justify-between border-b border-[#F5D8B3] pb-5">
+          <Link href="/user/dashboard" className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3E000C] text-[#FFECD1]">
+              <Ticket className="h-5 w-5" />
+            </div>
+            <div className="leading-tight">
+              <p className="text-lg font-bold tracking-tight text-[#3E000C]">
+                Gather
+              </p>
+              <p className="text-xs text-stone-600">Event platform</p>
+            </div>
+          </Link>
 
           <Link
             href="/events"
-            className="rounded-xl bg-[#3E000C] px-5 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#2B0008]"
+            className="flex h-10 items-center gap-2 rounded-lg bg-[#3E000C] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#2B0008]"
           >
-            Explore Events
+            <Compass className="h-4 w-4" />
+            <span className="hidden sm:inline">Explore events</span>
           </Link>
         </header>
 
+        {/* Page title */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold tracking-tight text-[#3E000C] sm:text-3xl">
+            My bookings
+          </h1>
+          <p className="mt-1 text-sm text-stone-600 sm:text-base">
+            View your booked events and ticket details.
+          </p>
+        </div>
+
         {error && (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700 shadow-sm">
-            <p className="font-bold">Unable to load bookings</p>
+          <div
+            role="alert"
+            className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700"
+          >
+            <p className="flex items-center gap-2 font-semibold">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              Unable to load bookings
+            </p>
             <p className="mt-1 text-sm">{error}</p>
 
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="mt-3 rounded-xl border border-red-300 bg-white px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3.5 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50"
             >
-              Try Again
+              <RefreshCw className="h-4 w-4" />
+              Try again
             </button>
           </div>
         )}
 
         {!error && bookings.length === 0 && (
-          <div className="rounded-3xl border border-[#F5D8B3] bg-white p-12 text-center shadow-sm">
-            <div className="mb-4 text-5xl">🎟️</div>
+          <div className="rounded-xl border border-[#F5D8B3] bg-white p-12 text-center">
+            <span className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-xl bg-[#FFECD1] text-[#3E000C]">
+              <TicketX className="h-7 w-7" />
+            </span>
 
-            <h2 className="text-xl font-bold text-[#3E000C]">
+            <h2 className="text-lg font-semibold text-[#3E000C]">
               No bookings yet
             </h2>
 
-            <p className="mt-2 text-sm text-stone-500">
-              You haven&apos;t booked any events yet. Explore events and book
-              your next experience!
+            <p className="mx-auto mt-1.5 max-w-sm text-sm text-stone-600">
+              You haven&apos;t booked any events yet. Find an event you like and
+              book your first ticket.
             </p>
 
             <Link
               href="/events"
-              className="mt-6 inline-flex items-center justify-center rounded-xl bg-[#3E000C] px-6 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#2B0008]"
+              className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#3E000C] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
             >
-              Browse Events
+              <Compass className="h-4 w-4" />
+              Browse events
             </Link>
           </div>
         )}
@@ -230,33 +265,33 @@ export default function MyBookingsPage() {
               return (
                 <article
                   key={booking._id}
-                  className="overflow-hidden rounded-3xl border border-[#F5D8B3] bg-white shadow-sm transition-all hover:shadow-md"
+                  className="overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm transition-shadow hover:shadow-md"
                 >
-                  <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center">
+                  <div className="flex flex-col gap-5 p-5 sm:flex-row">
                     {imageUrl ? (
                       <img
                         src={imageUrl}
                         alt={booking.event?.eventName || "Event"}
-                        className="h-44 w-full rounded-2xl object-cover sm:w-52 bg-stone-100"
+                        className="h-44 w-full rounded-lg bg-stone-100 object-cover sm:h-auto sm:w-52"
                         onError={(event) => {
                           event.currentTarget.style.display = "none";
                         }}
                       />
                     ) : (
-                      <div className="flex h-44 w-full items-center justify-center rounded-2xl bg-stone-100 text-4xl sm:w-52">
-                        🎫
+                      <div className="flex h-44 w-full items-center justify-center rounded-lg bg-[#3E000C] text-[#FFECD1] sm:h-auto sm:w-52">
+                        <Ticket className="h-10 w-10 opacity-80" />
                       </div>
                     )}
 
-                    <div className="flex min-w-0 flex-1 flex-col justify-between space-y-4">
+                    <div className="flex min-w-0 flex-1 flex-col gap-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <h2 className="text-xl font-bold tracking-tight text-[#3E000C]">
+                        <h2 className="text-lg font-semibold text-[#3E000C] sm:text-xl">
                           {booking.event?.eventName ||
                             "Event details unavailable"}
                         </h2>
 
                         <span
-                          className={`rounded-xl px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                          className={`rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${
                             isCancelled
                               ? "bg-red-100 text-red-800"
                               : "bg-emerald-100 text-emerald-800"
@@ -266,58 +301,61 @@ export default function MyBookingsPage() {
                         </span>
                       </div>
 
-                      <div className="grid gap-1.5 text-sm text-stone-600 sm:grid-cols-2">
-                        <p className="break-all sm:col-span-2">
-                          <strong className="font-semibold text-stone-900">
-                            Booking Reference:
-                          </strong>{" "}
-                          {booking.bookingId || booking._id}
-                        </p>
+                      <ul className="grid gap-2 text-sm text-stone-600 sm:grid-cols-2">
+                        <li className="flex items-center gap-2 break-all sm:col-span-2">
+                          <Hash className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+                          <span>
+                            <span className="font-medium text-stone-900">
+                              Reference:
+                            </span>{" "}
+                            {booking.bookingId || booking._id}
+                          </span>
+                        </li>
 
-                        <p>
-                          <strong className="font-semibold text-stone-900">Date:</strong>{" "}
+                        <li className="flex items-center gap-2">
+                          <CalendarDays className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
                           {formatDate(booking.event?.date)}
-                        </p>
+                        </li>
 
                         {booking.event?.time && (
-                          <p>
-                            <strong className="font-semibold text-stone-900">Time:</strong>{" "}
+                          <li className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
                             {booking.event.time}
-                          </p>
+                          </li>
                         )}
 
-                        {(booking.event?.venue ||
-                          booking.event?.location) && (
-                          <p className="sm:col-span-2">
-                            <strong className="font-semibold text-stone-900">Venue:</strong>{" "}
-                            {booking.event.venue ||
-                              booking.event.location}
-                          </p>
+                        {(booking.event?.venue || booking.event?.location) && (
+                          <li className="flex items-center gap-2 sm:col-span-2">
+                            <MapPin className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+                            {booking.event.venue || booking.event.location}
+                          </li>
                         )}
 
-                        <p>
-                          <strong className="font-semibold text-stone-900">
-                            Ticket Type:
-                          </strong>{" "}
-                          {booking.ticketType || "General"}
-                        </p>
+                        <li className="flex items-center gap-2">
+                          <Ticket className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+                          {booking.ticketType || "General"} ticket
+                        </li>
 
-                        <p>
-                          <strong className="font-semibold text-stone-900">Quantity:</strong>{" "}
-                          {booking.quantity}
-                        </p>
-                      </div>
+                        <li className="flex items-center gap-2">
+                          <Users className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+                          Quantity: {booking.quantity}
+                        </li>
+                      </ul>
 
-                      <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-stone-100">
-                        <p className="text-lg font-black text-[#3E000C]">
-                          {formatPrice(booking.totalPrice)}
-                        </p>
+                      <div className="mt-auto flex flex-wrap items-center justify-between gap-4 border-t border-stone-100 pt-4">
+                        <div>
+                          <p className="text-xs text-stone-500">Total paid</p>
+                          <p className="text-lg font-bold text-[#3E000C]">
+                            {formatPrice(booking.totalPrice)}
+                          </p>
+                        </div>
 
                         <Link
                           href={`/user/bookings/${booking._id}`}
-                          className="rounded-xl bg-[#3E000C] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#2B0008]"
+                          className="inline-flex items-center gap-2 rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
                         >
-                          View Ticket
+                          <QrCode className="h-4 w-4" />
+                          View ticket
                         </Link>
                       </div>
                     </div>
@@ -331,9 +369,10 @@ export default function MyBookingsPage() {
         <div className="mt-8">
           <Link
             href="/user/dashboard"
-            className="text-sm font-semibold text-[#3E000C] hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#3E000C] hover:underline"
           >
-            ← Back to Dashboard
+            <ArrowLeft className="h-4 w-4" />
+            Back to dashboard
           </Link>
         </div>
       </div>

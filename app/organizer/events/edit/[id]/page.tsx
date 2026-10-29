@@ -3,6 +3,20 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  CalendarDays,
+  Clock,
+  MapPin,
+  Building2,
+  Armchair,
+  ArrowLeft,
+  Tag,
+  FileText,
+  IndianRupee,
+  Calendar,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 
 interface EventFormData {
   eventName: string;
@@ -33,8 +47,7 @@ export default function EditEventPage() {
   const params = useParams<{ id: string }>();
   const eventId = params.id;
 
-  const [formData, setFormData] =
-    useState<EventFormData>(emptyForm);
+  const [formData, setFormData] = useState<EventFormData>(emptyForm);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -56,38 +69,26 @@ export default function EditEventPage() {
           throw new Error("Backend URL is not configured.");
         }
 
-        // Get the event details
-        const response = await fetch(
-        `${backendUrl}/events/${eventId}`,
-        {
-            method: "GET",
-            headers: {
+        const response = await fetch(`${backendUrl}/events/${eventId}`, {
+          method: "GET",
+          headers: {
             Authorization: `Bearer ${token}`,
-            },
-        }
-        );
+          },
+        });
 
-const responseText = await response.text();
+        const responseText = await response.text();
+        const result = JSON.parse(responseText);
 
-console.log("Response status:", response.status);
-console.log("Response URL:", response.url);
-console.log("Response:", responseText);
-
-const result = JSON.parse(responseText);
         if (!response.ok) {
-          throw new Error(
-            result.message || "Failed to load event."
-          );
+          throw new Error(result.message || "Failed to load event.");
         }
 
-        // Support common API response structures
         const event = result.data ?? result.event ?? result;
 
         if (!event || !event.eventName) {
           throw new Error("Event details were not found.");
         }
 
-        // Convert the date to YYYY-MM-DD for the date input
         const dateValue = event.date
           ? new Date(event.date).toISOString().split("T")[0]
           : "";
@@ -105,9 +106,7 @@ const result = JSON.parse(responseText);
         });
       } catch (err: unknown) {
         setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load event."
+          err instanceof Error ? err.message : "Failed to load event."
         );
       } finally {
         setLoading(false);
@@ -119,7 +118,6 @@ const result = JSON.parse(responseText);
     }
   }, [eventId, backendUrl]);
 
-  // Handle form input changes
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -133,10 +131,7 @@ const result = JSON.parse(responseText);
     }));
   };
 
-  // Update the event
-  const handleSubmit = async (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setSaving(true);
@@ -153,34 +148,29 @@ const result = JSON.parse(responseText);
         throw new Error("Backend URL is not configured.");
       }
 
-      const response = await fetch(
-        `${backendUrl}/events/${eventId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            eventName: formData.eventName,
-            category: formData.category,
-            date: formData.date,
-            time: formData.time,
-            venue: formData.venue,
-            location: formData.location,
-            description: formData.description,
-            ticketPrice: Number(formData.ticketPrice),
-            availableSeats: Number(formData.availableSeats),
-          }),
-        }
-      );
+      const response = await fetch(`${backendUrl}/events/${eventId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          eventName: formData.eventName,
+          category: formData.category,
+          date: formData.date,
+          time: formData.time,
+          venue: formData.venue,
+          location: formData.location,
+          description: formData.description,
+          ticketPrice: Number(formData.ticketPrice),
+          availableSeats: Number(formData.availableSeats),
+        }),
+      });
 
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(
-          result.message || "Failed to update event."
-        );
+        throw new Error(result.message || "Failed to update event.");
       }
 
       alert("Event updated successfully!");
@@ -189,9 +179,7 @@ const result = JSON.parse(responseText);
       router.refresh();
     } catch (err: unknown) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong."
+        err instanceof Error ? err.message : "Something went wrong."
       );
     } finally {
       setSaving(false);
@@ -200,203 +188,281 @@ const result = JSON.parse(responseText);
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-100 p-6">
-        <p className="text-gray-600">Loading event details...</p>
+      <main className="min-h-screen bg-[#FFECD1] p-8 flex items-center justify-center text-stone-700">
+        <div className="flex items-center gap-2 font-medium">
+          <Loader2 className="h-5 w-5 animate-spin text-[#3E000C]" />
+          Loading event details...
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 p-6">
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-6">
-          <Link
-            href="/organizer/dashboard"
-            className="text-green-700 hover:underline"
-          >
-            ← Back to Dashboard
-          </Link>
+    <>
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 
-          <h1 className="mt-4 text-3xl font-bold text-gray-800">
-            Edit Event
-          </h1>
+        .editorial-heading {
+          font-family: 'Cormorant Garamond', Georgia, serif;
+          letter-spacing: -0.02em;
+        }
+      `}</style>
 
-          <p className="mt-2 text-gray-600">
-            Update your event details below.
-          </p>
-        </div>
+      <main className="min-h-screen bg-[#FFECD1] px-4 py-12 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1] sm:px-6">
+        <div className="mx-auto max-w-3xl">
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-5 rounded-xl bg-white p-6 shadow"
-        >
-          <div>
-            <label className="mb-2 block font-medium text-gray-700">
-              Event Name *
-            </label>
+          {/* Header Section */}
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#F5D8B3] pb-6">
+            <div>
+              <span className="mb-1 inline-block rounded-lg bg-[#3E000C]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#3E000C]">
+                Organizer Portal
+              </span>
+              <h1 className="editorial-heading text-4xl font-bold tracking-tight text-[#3E000C] sm:text-5xl">
+                Edit Event
+              </h1>
+              <p className="mt-1 text-sm text-stone-600">
+                Modify your event specifications and update attendee details below.
+              </p>
+            </div>
 
-            <input
-              type="text"
-              name="eventName"
-              value={formData.eventName}
-              onChange={handleChange}
-              required
-              className="w-full rounded-lg border p-3 text-gray-800"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block font-medium text-gray-700">
-              Category *
-            </label>
-
-            <select
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-              required
-              className="w-full rounded-lg border p-3 text-gray-800"
+            <Link
+              href="/organizer/dashboard"
+              className="inline-flex items-center gap-2 rounded-2xl border border-[#F5D8B3] bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#3E000C] shadow-sm transition-all hover:bg-stone-50"
             >
-              <option value="" disabled>
-                Select a category
-              </option>
-              <option value="Concert">Concert</option>
-              <option value="Workshop">Workshop</option>
-              <option value="Sports">Sports</option>
-              <option value="Conference">Conference</option>
-              <option value="Exhibition">Exhibition</option>
-              <option value="Entertainment">Entertainment</option>
-            </select>
+              <ArrowLeft className="h-4 w-4" /> Dashboard
+            </Link>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block font-medium text-gray-700">
-                Date *
-              </label>
-
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-                required
-                className="w-full rounded-lg border p-3 text-gray-800"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block font-medium text-gray-700">
-                Time *
-              </label>
-
-              <input
-                type="time"
-                name="time"
-                value={formData.time}
-                onChange={handleChange}
-                required
-                className="w-full rounded-lg border p-3 text-gray-800"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-2 block font-medium text-gray-700">
-              Venue *
-            </label>
-
-            <input
-              type="text"
-              name="venue"
-              value={formData.venue}
-              onChange={handleChange}
-              required
-              className="w-full rounded-lg border p-3 text-gray-800"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block font-medium text-gray-700">
-              Location *
-            </label>
-
-            <input
-              type="text"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              required
-              className="w-full rounded-lg border p-3 text-gray-800"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block font-medium text-gray-700">
-              Description *
-            </label>
-
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows={4}
-              required
-              className="w-full rounded-lg border p-3 text-gray-800"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block font-medium text-gray-700">
-                Ticket Price (₹) *
-              </label>
-
-              <input
-                type="number"
-                name="ticketPrice"
-                value={formData.ticketPrice}
-                onChange={handleChange}
-                min="0"
-                step="0.01"
-                required
-                className="w-full rounded-lg border p-3 text-gray-800"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block font-medium text-gray-700">
-                Available Seats *
-              </label>
-
-              <input
-                type="number"
-                name="availableSeats"
-                value={formData.availableSeats}
-                onChange={handleChange}
-                min="0"
-                step="1"
-                required
-                className="w-full rounded-lg border p-3 text-gray-800"
-              />
-            </div>
-          </div>
-
-          {error && (
-            <p className="rounded-lg bg-red-100 p-3 text-red-700">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full rounded-lg bg-green-700 px-5 py-3 font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
+          {/* Form Card Container */}
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-6 rounded-3xl border border-[#F5D8B3] bg-white p-8 shadow-sm"
           >
-            {saving ? "Updating Event..." : "Update Event"}
-          </button>
-        </form>
-      </div>
-    </main>
+            <div className="flex items-center gap-3 border-b border-stone-100 pb-4">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFECD1] text-[#3E000C]">
+                <Calendar className="h-6 w-6" />
+              </span>
+              <div>
+                <h2 className="editorial-heading text-2xl font-bold text-[#3E000C]">
+                  Event Configuration
+                </h2>
+                <p className="text-xs font-semibold text-stone-500">
+                  Make sure all critical fields are accurate before saving changes.
+                </p>
+              </div>
+            </div>
+
+            {/* Event Name */}
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                Event Name *
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="eventName"
+                  value={formData.eventName}
+                  onChange={handleChange}
+                  placeholder="Enter event name"
+                  required
+                  className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pl-11 text-sm text-stone-900 placeholder-stone-400 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                />
+                <CalendarDays className="absolute left-4 top-3.5 h-5 w-5 text-stone-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Category */}
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                Category *
+              </label>
+              <div className="relative">
+                <select
+                  name="category"
+                  value={formData.category}
+                  onChange={handleChange}
+                  required
+                  className="w-full appearance-none rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pl-11 text-sm text-stone-900 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                >
+                  <option value="" disabled>
+                    Select a category
+                  </option>
+                  <option value="Concert">Concert</option>
+                  <option value="Workshop">Workshop</option>
+                  <option value="Sports">Sports</option>
+                  <option value="Conference">Conference</option>
+                  <option value="Exhibition">Exhibition</option>
+                  <option value="Entertainment">Entertainment</option>
+                </select>
+                <Tag className="absolute left-4 top-3.5 h-5 w-5 text-stone-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Date and Time */}
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                  Date *
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    name="date"
+                    value={formData.date}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pl-11 text-sm text-stone-900 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                  />
+                  <CalendarDays className="absolute left-4 top-3.5 h-5 w-5 text-stone-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                  Time *
+                </label>
+                <div className="relative">
+                  <input
+                    type="time"
+                    name="time"
+                    value={formData.time}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pl-11 text-sm text-stone-900 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                  />
+                  <Clock className="absolute left-4 top-3.5 h-5 w-5 text-stone-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Venue */}
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                Venue *
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="venue"
+                  value={formData.venue}
+                  onChange={handleChange}
+                  placeholder="Enter venue name"
+                  required
+                  className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pl-11 text-sm text-stone-900 placeholder-stone-400 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                />
+                <Building2 className="absolute left-4 top-3.5 h-5 w-5 text-stone-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Location */}
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                Location *
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  placeholder="Enter city or location"
+                  required
+                  className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pl-11 text-sm text-stone-900 placeholder-stone-400 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                />
+                <MapPin className="absolute left-4 top-3.5 h-5 w-5 text-stone-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                Description *
+              </label>
+              <div className="relative">
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Describe your event"
+                  rows={4}
+                  required
+                  className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 p-4 pl-11 text-sm text-stone-900 placeholder-stone-400 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                />
+                <FileText className="absolute left-4 top-4 h-5 w-5 text-stone-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Ticket Price and Available Seats */}
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                  Ticket Price (₹) *
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    name="ticketPrice"
+                    value={formData.ticketPrice}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                    placeholder="Enter ticket price"
+                    required
+                    className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pl-11 text-sm text-stone-900 placeholder-stone-400 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                  />
+                  <IndianRupee className="absolute left-4 top-3.5 h-5 w-5 text-stone-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                  Available Seats *
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    name="availableSeats"
+                    value={formData.availableSeats}
+                    onChange={handleChange}
+                    min="0"
+                    step="1"
+                    placeholder="Enter available seats"
+                    required
+                    className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pl-11 text-sm text-stone-900 placeholder-stone-400 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                  />
+                  <Armchair className="absolute left-4 top-3.5 h-5 w-5 text-stone-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+                <AlertCircle className="h-5 w-5 shrink-0" />
+                {error}
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#3E000C] px-6 py-4 text-xs font-bold uppercase tracking-wider text-white shadow-md shadow-[#3E000C]/20 transition-all hover:bg-[#2B0008] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Updating Event...
+                </>
+              ) : (
+                <>
+                  <Calendar className="h-4 w-4" /> Update Event
+                </>
+              )}
+            </button>
+
+          </form>
+        </div>
+      </main>
+    </>
   );
 }

@@ -2,6 +2,25 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  Ticket,
+  Compass,
+  Tag,
+  Minus,
+  Plus,
+  Lock,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Info,
+  CalendarX2,
+  Hash,
+  Users,
+  Wallet,
+  CreditCard,
+  BadgeCheck,
+  QrCode,
+} from "lucide-react";
 
 interface EventData {
   _id: string;
@@ -63,9 +82,7 @@ interface RazorpayInstance {
 
 declare global {
   interface Window {
-    Razorpay?: new (
-      options: RazorpayOptions
-    ) => RazorpayInstance;
+    Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
   }
 }
 
@@ -81,11 +98,11 @@ export default function BookEvent({
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [bookingDetails, setBookingDetails] =useState<BookingResponse | null>(null);
+  const [bookingDetails, setBookingDetails] =
+    useState<BookingResponse | null>(null);
 
   const backendUrl =
-    process.env.NEXT_PUBLIC_BACKEND_URL ||
-    "http://localhost:5000/api";
+    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
 
   useEffect(() => {
     params.then((value) => setEventId(value.id));
@@ -106,28 +123,21 @@ export default function BookEvent({
           return;
         }
 
-        const response = await fetch(
-          `${backendUrl}/events/getevent`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        const response = await fetch(`${backendUrl}/events/getevent`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
 
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(
-            result.message || "Failed to fetch events."
-          );
+          throw new Error(result.message || "Failed to fetch events.");
         }
 
-        const events = Array.isArray(result.data)
-          ? result.data
-          : [];
+        const events = Array.isArray(result.data) ? result.data : [];
 
         const selectedEvent = events.find(
           (item: EventData) => item._id === eventId
@@ -177,8 +187,7 @@ export default function BookEvent({
 
       const script = document.createElement("script");
 
-      script.src =
-        "https://checkout.razorpay.com/v1/checkout.js";
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
 
       script.onload = () => resolve(Boolean(window.Razorpay));
       script.onerror = () => resolve(false);
@@ -210,27 +219,22 @@ export default function BookEvent({
       const scriptLoaded = await loadRazorpayScript();
 
       if (!scriptLoaded || !window.Razorpay) {
-        throw new Error(
-          "Unable to load Razorpay Checkout. Please try again."
-        );
+        throw new Error("Unable to load Razorpay Checkout. Please try again.");
       }
 
       // Ask the backend to create a Razorpay order.
-      const orderResponse = await fetch(
-        `${backendUrl}/payments/create-order`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            eventId,
-            quantity,
-            ticketType,
-          }),
-        }
-      );
+      const orderResponse = await fetch(`${backendUrl}/payments/create-order`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          eventId,
+          quantity,
+          ticketType,
+        }),
+      });
 
       const orderResult = await orderResponse.json();
 
@@ -264,44 +268,39 @@ export default function BookEvent({
              * Do not create or confirm a booking until the
              * backend verifies the Razorpay signature.
              */
-            const verifyResponse = await fetch(
-              `${backendUrl}/payments/verify`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                  razorpay_order_id: paymentResponse.razorpay_order_id,
-                  razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                  razorpay_signature: paymentResponse.razorpay_signature,
-                  eventId,
-                  quantity,
-                  ticketType,
-                }),
-              }
-            );
+            const verifyResponse = await fetch(`${backendUrl}/payments/verify`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                razorpay_order_id: paymentResponse.razorpay_order_id,
+                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                razorpay_signature: paymentResponse.razorpay_signature,
+                eventId,
+                quantity,
+                ticketType,
+              }),
+            });
 
-          const verifyResult: RazorpayVerifyResult =
-            await verifyResponse.json();
+            const verifyResult: RazorpayVerifyResult =
+              await verifyResponse.json();
 
-          if (!verifyResponse.ok || !verifyResult.success) {
-            throw new Error(
-              verifyResult.message ||
-                "Payment verification failed."
-            );
-          }
+            if (!verifyResponse.ok || !verifyResult.success) {
+              throw new Error(
+                verifyResult.message || "Payment verification failed."
+              );
+            }
 
-          if (!verifyResult.data?.bookingId) {
-            throw new Error(
-              "Booking details were not returned. Please check My Bookings."
-            );
-          }
+            if (!verifyResult.data?.bookingId) {
+              throw new Error(
+                "Booking details were not returned. Please check My Bookings."
+              );
+            }
 
-          setBookingDetails(verifyResult.data);
-          setMessage("Payment verified and booking confirmed!");
-
+            setBookingDetails(verifyResult.data);
+            setMessage("Payment verified and booking confirmed!");
           } catch (error) {
             setMessage(
               error instanceof Error
@@ -330,234 +329,310 @@ export default function BookEvent({
       razorpay.open();
     } catch (error) {
       setMessage(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong."
+        error instanceof Error ? error.message : "Something went wrong."
       );
 
       setSubmitting(false);
     }
   };
 
+  const inputClass =
+    "w-full rounded-lg border border-stone-300 bg-white py-3 pl-11 pr-4 text-sm text-stone-900 outline-none transition focus:border-[#3E000C] focus:ring-2 focus:ring-[#3E000C]/15";
+  const labelClass = "mb-1.5 block text-sm font-medium text-stone-700";
+
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FFECD1] font-semibold text-[#3E000C]">
-        Loading event details...
+      <div className="flex min-h-screen items-center justify-center bg-[#FFECD1] text-[#3E000C]">
+        <p className="flex items-center gap-2 font-medium">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Loading event details...
+        </p>
       </div>
     );
   }
 
   if (!event) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#FFECD1] p-6 text-center">
-        <div className="w-full max-w-md rounded-3xl border border-[#F5D8B3] bg-white p-8 shadow-sm">
-          <p className="mb-4 text-sm font-medium text-stone-600">
+      <div className="flex min-h-screen items-center justify-center bg-[#FFECD1] p-6">
+        <div className="w-full max-w-md rounded-xl border border-[#F5D8B3] bg-white p-8 text-center shadow-sm">
+          <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-[#FFECD1] text-[#3E000C]">
+            <CalendarX2 className="h-6 w-6" />
+          </span>
+          <p className="mb-5 text-sm text-stone-700">
             {message || "Event not found."}
           </p>
 
           <Link
             href="/events"
-            className="inline-flex rounded-xl bg-[#3E000C] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#2B0008]"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#3E000C] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
           >
-            Back to Events
+            <Compass className="h-4 w-4" />
+            Back to events
           </Link>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#FFECD1] px-4 py-10 text-stone-900">
-      <div className="mx-auto max-w-xl">
-        <header className="mb-8 flex items-center justify-between border-b border-[#F5D8B3] pb-6">
-          <Link
-            href="/user/dashboard"
-            className="flex items-center gap-3"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#3E000C] text-lg font-bold text-[#FFECD1]">
-              ✦
-            </div>
+  // Message style: success, in-progress or error
+  const messageTone = message.includes("verified")
+    ? "success"
+    : message.includes("Verifying")
+      ? "info"
+      : "error";
 
-            <div>
-              <h1 className="text-xl font-black text-[#3E000C]">
-                Gather.
-              </h1>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-stone-500">
-                Checkout
+  const messageStyles = {
+    success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    info: "border-[#F5D8B3] bg-[#FFECD1]/50 text-[#3E000C]",
+    error: "border-red-200 bg-red-50 text-red-700",
+  }[messageTone];
+
+  const MessageIcon =
+    messageTone === "success"
+      ? CheckCircle2
+      : messageTone === "info"
+        ? Info
+        : AlertCircle;
+
+  return (
+    <div className="min-h-screen bg-[#FFECD1] px-4 py-6 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
+      <div className="mx-auto max-w-xl">
+        {/* Header */}
+        <header className="mb-8 flex items-center justify-between border-b border-[#F5D8B3] pb-5">
+          <Link href="/user/dashboard" className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3E000C] text-[#FFECD1]">
+              <Ticket className="h-5 w-5" />
+            </div>
+            <div className="leading-tight">
+              <p className="text-lg font-bold tracking-tight text-[#3E000C]">
+                Gather
               </p>
+              <p className="text-xs text-stone-600">Event platform</p>
             </div>
           </Link>
 
           <Link
             href="/events"
-            className="rounded-xl border border-[#3E000C]/20 bg-white px-5 py-2.5 text-sm font-bold text-[#3E000C] hover:bg-[#3E000C] hover:text-white"
+            className="flex h-10 items-center gap-2 rounded-lg border border-[#3E000C]/25 bg-white px-3.5 text-sm font-medium text-[#3E000C] transition-colors hover:bg-[#3E000C] hover:text-white"
           >
-            All Events
+            <Compass className="h-4 w-4" />
+            <span className="hidden sm:inline">All events</span>
           </Link>
         </header>
 
-        <div className="space-y-6 rounded-3xl border border-[#F5D8B3] bg-white p-8 shadow-sm">
-          <div>
-            <span className="mb-2 inline-block rounded-lg bg-[#3E000C]/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#3E000C]">
-              Ticket Reservation
-            </span>
-
-            <h2 className="text-2xl font-black text-[#3E000C]">
+        <div className="overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm">
+          {/* Event summary */}
+          <div className="bg-[#3E000C] px-6 py-6 text-[#FFECD1] sm:px-8">
+            <p className="text-sm text-[#FFECD1]/75">Book tickets</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-white">
               {event.eventName}
-            </h2>
-
-            <p className="mt-1 text-sm font-semibold text-stone-600">
+            </h1>
+            <p className="mt-2 text-sm text-[#FFECD1]/75">
               Price per ticket:{" "}
-              <span className="text-[#3E000C]">
+              <span className="font-semibold text-white">
                 ₹{event.ticketPrice}
               </span>
             </p>
           </div>
 
-          <div className="space-y-4 border-t border-stone-100 pt-4">
-            <div>
-              <label
-                htmlFor="ticketType"
-                className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#3E000C]"
-              >
-                Ticket Type
-              </label>
+          <div className="space-y-6 p-6 sm:p-8">
+            {/* Booking form (hidden once the booking is confirmed) */}
+            {!bookingDetails && (
+              <>
+                <div className="space-y-5">
+                  <div>
+                    <label htmlFor="ticketType" className={labelClass}>
+                      Ticket type
+                    </label>
+                    <div className="relative">
+                      <Tag className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                      <select
+                        id="ticketType"
+                        value={ticketType}
+                        onChange={(e) => setTicketType(e.target.value)}
+                        disabled={submitting}
+                        className={inputClass}
+                      >
+                        <option value="General">General</option>
+                        <option value="VIP">VIP</option>
+                        <option value="Premium">Premium</option>
+                      </select>
+                    </div>
+                  </div>
 
-              <select
-                id="ticketType"
-                value={ticketType}
-                onChange={(e) => setTicketType(e.target.value)}
-                className="w-full rounded-xl border border-stone-300 bg-stone-50/50 px-4 py-3 text-sm outline-none focus:border-[#3E000C] focus:bg-white"
-              >
-                <option value="General">General</option>
-                <option value="VIP">VIP</option>
-                <option value="Premium">Premium</option>
-              </select>
-            </div>
+                  <div>
+                    <label htmlFor="quantity" className={labelClass}>
+                      Number of tickets
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setQuantity((current) => Math.max(1, current - 1))
+                        }
+                        disabled={submitting || quantity <= 1}
+                        aria-label="Decrease tickets"
+                        className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-stone-300 bg-white text-[#3E000C] transition hover:border-[#3E000C] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
 
-            <div>
-              <label
-                htmlFor="quantity"
-                className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#3E000C]"
-              >
-                Number of Tickets
-              </label>
+                      <input
+                        id="quantity"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={quantity}
+                        disabled={submitting}
+                        onChange={(e) =>
+                          setQuantity(Math.max(1, Number(e.target.value) || 1))
+                        }
+                        className="h-11 w-full rounded-lg border border-stone-300 bg-white px-4 text-center text-sm font-semibold text-stone-900 outline-none transition focus:border-[#3E000C] focus:ring-2 focus:ring-[#3E000C]/15"
+                      />
 
-              <input
-                id="quantity"
-                type="number"
-                min="1"
-                step="1"
-                value={quantity}
-                onChange={(e) =>
-                  setQuantity(
-                    Math.max(1, Number(e.target.value) || 1)
-                  )
-                }
-                className="w-full rounded-xl border border-stone-300 bg-stone-50/50 px-4 py-3 text-sm outline-none focus:border-[#3E000C] focus:bg-white"
-              />
-            </div>
+                      <button
+                        type="button"
+                        onClick={() => setQuantity((current) => current + 1)}
+                        disabled={submitting}
+                        aria-label="Increase tickets"
+                        className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-stone-300 bg-white text-[#3E000C] transition hover:border-[#3E000C] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className="flex items-center justify-between rounded-lg bg-[#FFECD1]/50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-[#3E000C]">
+                      Total price
+                    </p>
+                    <p className="text-xs text-stone-600">
+                      {quantity} × ₹{event.ticketPrice}
+                    </p>
+                  </div>
+                  <span className="text-2xl font-bold text-[#3E000C]">
+                    ₹{event.ticketPrice * quantity}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleBooking}
+                  disabled={submitting}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#3E000C] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {submitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Lock className="h-4 w-4" />
+                  )}
+                  {submitting ? "Processing payment..." : "Pay with Razorpay"}
+                </button>
+
+                <p className="text-center text-xs text-stone-500">
+                  Payments are processed securely by Razorpay.
+                </p>
+              </>
+            )}
+
+            {/* Status message */}
+            {message && (
+              <p
+                role="status"
+                className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${messageStyles}`}
+              >
+                <MessageIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                {message}
+              </p>
+            )}
+
+            {/* Booking confirmed */}
+            {bookingDetails && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-5 sm:p-6">
+                <h2 className="flex items-center gap-2 text-xl font-bold text-emerald-900">
+                  <CheckCircle2 className="h-6 w-6" />
+                  Booking confirmed
+                </h2>
+
+                <ul className="mt-4 space-y-3 text-sm text-emerald-950">
+                  <li className="flex items-start gap-3 break-all">
+                    <Hash className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                    <span>
+                      <span className="font-medium">Booking ID:</span>{" "}
+                      {bookingDetails.bookingId}
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Ticket className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                    <span>
+                      <span className="font-medium">Event:</span>{" "}
+                      {event.eventName}
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Users className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                    <span>
+                      <span className="font-medium">Tickets:</span>{" "}
+                      {bookingDetails.quantity}
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Wallet className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                    <span>
+                      <span className="font-medium">Total price:</span> ₹
+                      {bookingDetails.totalPrice}
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                    <span>
+                      <span className="font-medium">Payment status:</span>{" "}
+                      <span className="capitalize">
+                        {bookingDetails.paymentStatus}
+                      </span>
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                    <span>
+                      <span className="font-medium">Booking status:</span>{" "}
+                      <span className="capitalize">{bookingDetails.status}</span>
+                    </span>
+                  </li>
+                </ul>
+
+                {bookingDetails.qrCode && (
+                  <div className="mt-6 text-center">
+                    <h3 className="mb-3 flex items-center justify-center gap-2 font-semibold text-emerald-900">
+                      <QrCode className="h-4 w-4" />
+                      Your ticket QR code
+                    </h3>
+
+                    <img
+                      src={bookingDetails.qrCode}
+                      alt="Ticket QR code"
+                      className="mx-auto h-48 w-48 rounded-lg border border-emerald-200 bg-white p-2"
+                    />
+
+                    <p className="mt-3 text-sm text-emerald-800">
+                      Keep this QR code ready for ticket verification.
+                    </p>
+                  </div>
+                )}
+
+                <Link
+                  href="/user/bookings"
+                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#3E000C] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
+                >
+                  <Ticket className="h-4 w-4" />
+                  View my bookings
+                </Link>
+              </div>
+            )}
           </div>
-
-          <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-stone-50 p-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-              Total Price
-            </span>
-
-            <span className="text-xl font-black text-[#3E000C]">
-              ₹{event.ticketPrice * quantity}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleBooking}
-            disabled={submitting}
-            className="w-full rounded-xl bg-[#3E000C] px-6 py-3.5 text-sm font-bold text-white hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submitting
-              ? "Processing Payment..."
-              : "Pay with Razorpay"}
-          </button>
-
-          {message && (
-            <p
-              role="status"
-              className={`rounded-xl p-4 text-sm font-semibold ${
-                message.includes("verified")
-                  ? "border border-green-200 bg-green-50 text-green-800"
-                  : "border border-red-200 bg-red-50 text-red-700"
-              }`}
-            >
-              {message}
-            </p>
-          )}
-          {bookingDetails && (
-
-  <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-6">
-    <h3 className="mb-4 text-xl font-black text-green-900">
-      Booking Confirmed!
-    </h3>
-
-<div className="space-y-3 text-sm text-green-900">
-  <p>
-    <strong>Booking ID:</strong>{" "}
-    {bookingDetails.bookingId}
-  </p>
-
-  <p>
-    <strong>Event:</strong> {event.eventName}
-  </p>
-
-  <p>
-    <strong>Number of Tickets:</strong>{" "}
-    {bookingDetails.quantity}
-  </p>
-
-  <p>
-    <strong>Total Price:</strong> ₹
-    {bookingDetails.totalPrice}
-  </p>
-
-  <p>
-    <strong>Payment Status:</strong>{" "}
-    {bookingDetails.paymentStatus}
-  </p>
-
-  <p>
-    <strong>Booking Status:</strong>{" "}
-    {bookingDetails.status}
-  </p>
-</div>
-
-{bookingDetails.qrCode && (
-  <div className="mt-6 text-center">
-    <h4 className="mb-3 font-bold text-green-900">
-      Your Ticket QR Code
-    </h4>
-
-    <img
-      src={bookingDetails.qrCode}
-      alt="Ticket QR code"
-      className="mx-auto h-48 w-48 rounded-lg border border-green-200 bg-white p-2"
-    />
-
-    <p className="mt-3 text-xs text-green-800">
-      Keep this QR code ready for ticket verification.
-    </p>
-  </div>
-)}
-
-<Link
-  href="/user/bookings"
-  className="mt-6 inline-block rounded-xl bg-[#3E000C] px-5 py-3 text-sm font-bold text-white hover:bg-[#2B0008]"
->
-  View My Bookings
-</Link>
-
-  </div>
-)}
-
         </div>
       </div>
     </div>

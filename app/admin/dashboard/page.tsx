@@ -2,17 +2,32 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  Users,
+  ShieldCheck,
+  Calendar,
+  Ticket,
+  AlertTriangle,
+  Megaphone,
+  ArrowRight,
+  ShieldAlert,
+  Loader2,
+  RefreshCw,
+  UserCheck,
+  CalendarDays,
+  ClipboardList,
+  FileText,
+} from "lucide-react";
 import api from "@/lib/api";
 import AdminNavbar from "@/components/AdminNavbar";
 
 interface DashboardStats {
-totalUsers: number;
-totalOrganizers: number;
-totalEvents: number;
-totalBookings: number;
-pendingReports: number;
+  totalUsers: number;
+  totalOrganizers: number;
+  totalEvents: number;
+  totalBookings: number;
+  pendingReports: number;
 }
-
 
 interface OrganizerNotification {
   _id: string;
@@ -30,467 +45,426 @@ interface OrganizerNotification {
 }
 
 export default function AdminDashboard() {
-const [stats, setStats] = useState<DashboardStats>({
-totalUsers: 0,
-totalOrganizers: 0,
-totalEvents: 0,
-totalBookings: 0,
-pendingReports: 0,
-});
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    totalOrganizers: 0,
+    totalEvents: 0,
+    totalBookings: 0,
+    pendingReports: 0,
+  });
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notifications, setNotifications] = useState<OrganizerNotification[]>([]);
+  const [notificationError, setNotificationError] = useState("");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState("");
+  const [announcement, setAnnouncement] = useState("");
+  const [announcementMessage, setAnnouncementMessage] = useState("");
+  const [announcementLoading, setAnnouncementLoading] = useState(false);
 
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState("");
-const [notifications, setNotifications] = useState<OrganizerNotification[]>([]);
-const [notificationError, setNotificationError] = useState("");
-const [actionLoading, setActionLoading] = useState<string | null>(null);
-const [actionMessage, setActionMessage] = useState("");
-const [announcement, setAnnouncement] = useState("");
-const [announcementMessage, setAnnouncementMessage] = useState("");
-const [announcementLoading, setAnnouncementLoading] = useState(false);
+  // For announcement
+  const handleSendAnnouncement = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
 
+    const message = announcement.trim();
 
-//for announcement
-const handleSendAnnouncement = async (
-  event: React.FormEvent<HTMLFormElement>
-) => {
-  event.preventDefault();
+    if (!message) {
+      setAnnouncementMessage("Please enter an announcement.");
+      return;
+    }
 
-  const message = announcement.trim();
+    try {
+      setAnnouncementLoading(true);
+      setAnnouncementMessage("");
 
-  if (!message) {
-    setAnnouncementMessage("Please enter an announcement.");
-    return;
-  }
-
-  try {
-    setAnnouncementLoading(true);
-    setAnnouncementMessage("");
-
-    const response = await api.post(
-      "/notifications/announcement",
-      { message },
-      { withCredentials: true }
-    );
-
-    setAnnouncementMessage(
-      `${response.data.message || "Announcement sent successfully"}${
-        response.data.recipientCount !== undefined
-          ? ` (${response.data.recipientCount} users notified)`
-          : ""
-      }`
-    );
-
-    setAnnouncement("");
-  } catch (err: unknown) {
-    if (typeof err === "object" && err !== null && "response" in err) {
-      const apiError = err as {
-        response?: { data?: { message?: string } };
-      };
+      const response = await api.post(
+        "/notifications/announcement",
+        { message },
+        { withCredentials: true }
+      );
 
       setAnnouncementMessage(
-        apiError.response?.data?.message ||
-          "Failed to send announcement."
+        `${response.data.message || "Announcement sent successfully"}${
+          response.data.recipientCount !== undefined
+            ? ` (${response.data.recipientCount} users notified)`
+            : ""
+        }`
       );
-    } else {
-      setAnnouncementMessage("Unable to connect to the backend.");
+
+      setAnnouncement("");
+    } catch (err: unknown) {
+      if (typeof err === "object" && err !== null && "response" in err) {
+        const apiError = err as {
+          response?: { data?: { message?: string } };
+        };
+
+        setAnnouncementMessage(
+          apiError.response?.data?.message ||
+            "Failed to send announcement."
+        );
+      } else {
+        setAnnouncementMessage("Unable to connect to the backend.");
+      }
+    } finally {
+      setAnnouncementLoading(false);
     }
-  } finally {
-    setAnnouncementLoading(false);
-  }
-};
+  };
 
+  const handleOrganizerAction = async (
+    organizerId: string,
+    action: "approve" | "reject"
+  ) => {
+    const actionText = action === "approve" ? "approve" : "reject";
 
-const handleOrganizerAction = async (
-organizerId: string,
-action: "approve" | "reject"
-) => {
-const actionText = action === "approve" ? "approve" : "reject";
+    if (
+      action === "reject" &&
+      !window.confirm("Are you sure you want to reject this organizer?")
+    ) {
+      return;
+    }
 
-if (
-action === "reject" &&
-!window.confirm("Are you sure you want to reject this organizer?")
-) {
-return;
-}
+    try {
+      setActionLoading(organizerId);
+      setActionMessage("");
+      setNotificationError("");
 
-try {
-setActionLoading(organizerId);
-setActionMessage("");
-setNotificationError("");
+      const response = await api.patch(
+        `/admin/organizers/${organizerId}/${action}`,
+        {},
+        { withCredentials: true }
+      );
 
-const response = await api.patch(
-  `/admin/organizers/${organizerId}/${action}`,
-  {},
-  { withCredentials: true }
-);
+      setNotifications((previousNotifications) =>
+        previousNotifications.map((notification) =>
+          notification.organizer?._id === organizerId
+            ? {
+                ...notification,
+                organizer: {
+                  ...notification.organizer,
+                  verificationStatus: action === "approve" ? "approved" : "rejected",
+                },
+              }
+            : notification
+        )
+      );
 
-setNotifications((previousNotifications) =>
-  previousNotifications.map((notification) =>
-    notification.organizer?._id === organizerId
-      ? {
-          ...notification,
-          organizer: {
-            ...notification.organizer,
-            verificationStatus: action === "approve" ? "approved" : "rejected",
-          },
+      setActionMessage(response.data.message || `Organizer ${actionText}d successfully.`);
+    } catch (err: unknown) {
+      if (err && typeof err === "object" && "response" in err) {
+        const apiError = err as {
+          response?: {
+            data?: { message?: string };
+          };
+        };
+
+        setNotificationError(
+          apiError.response?.data?.message ||
+            `Failed to ${actionText} organizer.`
+        );
+      } else {
+        setNotificationError(`Unable to ${actionText} organizer.`);
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        const response = await api.get("/admin/dashboard-stats", {
+          withCredentials: true,
+        });
+
+        setStats(response.data.data);
+      } catch (err: unknown) {
+        if (err && typeof err === "object" && "response" in err) {
+          const apiError = err as {
+            response?: {
+              data?: { message?: string };
+              status?: number;
+            };
+          };
+
+          setError(
+            apiError.response?.data?.message ||
+              `Failed to load dashboard (HTTP ${apiError.response?.status || "error"}).`
+          );
+        } else {
+          setError("Unable to connect to the backend.");
         }
-      : notification
-  )
-);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-setActionMessage(response.data.message || `Organizer ${actionText}d successfully.`);
+    const fetchNotifications = async () => {
+      try {
+        const response = await api.get("/admin/notifications", {
+          withCredentials: true,
+        });
 
-} catch (err: unknown) {
-if (err && typeof err === "object" && "response" in err) {
-const apiError = err as {
-response?: {
-data?: { message?: string };
-};
-};
+        setNotifications(response.data.data || []);
+      } catch (err: unknown) {
+        if (err && typeof err === "object" && "response" in err) {
+          const apiError = err as {
+            response?: {
+              data?: { message?: string };
+            };
+          };
 
-  setNotificationError(
-    apiError.response?.data?.message ||
-      `Failed to ${actionText} organizer.`
-  );
-} else {
-  setNotificationError(`Unable to ${actionText} organizer.`);
-}
+          setNotificationError(
+            apiError.response?.data?.message ||
+              "Failed to load organizer notifications."
+          );
+        } else {
+          setNotificationError("Unable to load organizer notifications.");
+        }
+      }
+    };
 
-} finally {
-setActionLoading(null);
-}
-};
+    fetchNotifications();
+    fetchDashboardStats();
+  }, []);
 
+  const dashboardCards = [
+    {
+      title: "Total Users",
+      value: stats.totalUsers,
+      href: "/admin/users",
+      Icon: Users,
+    },
+    {
+      title: "Total Organizers",
+      value: stats.totalOrganizers,
+      href: "/admin/users",
+      Icon: ShieldCheck,
+    },
+    {
+      title: "Total Events",
+      value: stats.totalEvents,
+      href: "/admin/events",
+      Icon: Calendar,
+    },
+    {
+      title: "Total Bookings",
+      value: stats.totalBookings,
+      href: "/admin/bookings",
+      Icon: Ticket,
+    },
+    {
+      title: "Pending Reports",
+      value: stats.pendingReports,
+      href: "/admin/reports",
+      Icon: AlertTriangle,
+    },
+  ];
 
-useEffect(() => {
-const fetchDashboardStats = async () => {
-try {
-const response = await api.get("/admin/dashboard-stats", {
-withCredentials: true,
-});
-
-    setStats(response.data.data);
-  } catch (err: unknown) {
-    if (err && typeof err === "object" && "response" in err) {
-      const apiError = err as {
-        response?: {
-          data?: { message?: string };
-          status?: number;
-        };
-      };
-
-      setError(
-        apiError.response?.data?.message ||
-          `Failed to load dashboard (HTTP ${apiError.response?.status || "error"}).`
-      );
-    } else {
-      setError("Unable to connect to the backend.");
-    }
-  } finally {
-    setLoading(false);
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#FFECD1] text-stone-700">
+        <div className="flex items-center gap-2 font-medium">
+          <Loader2 className="h-5 w-5 animate-spin text-[#3E000C]" />
+          Loading admin dashboard...
+        </div>
+      </main>
+    );
   }
-};
 
-const fetchNotifications = async () => {
-  try {
-    const response = await api.get("/admin/notifications", {
-      withCredentials: true,
-    });
-
-    setNotifications(response.data.data || []);
-  } catch (err: unknown) {
-    if (err && typeof err === "object" && "response" in err) {
-      const apiError = err as {
-        response?: {
-          data?: { message?: string };
-        };
-      };
-
-      setNotificationError(
-        apiError.response?.data?.message ||
-          "Failed to load organizer notifications."
-      );
-    } else {
-      setNotificationError("Unable to load organizer notifications.");
-    }
-  }
-};
-
-fetchNotifications();
-
-
-
-fetchDashboardStats();
-
-}, []);
-
-const dashboardCards = [
-{
-title: "Total Users",
-value: stats.totalUsers,
-href: "/admin/users",
-},
-{
-title: "Total Organizers",
-value: stats.totalOrganizers,
-href: "/admin/users",
-},
-{
-title: "Total Events",
-value: stats.totalEvents,
-href: "/admin/events",
-},
-{
-title: "Total Bookings",
-value: stats.totalBookings,
-href: "/admin/bookings",
-},
-{
-title: "Pending Reports",
-value: stats.pendingReports,
-href: "/admin/reports",
-},
-
-];
-
-if (loading) {
-return ( <main className="flex min-h-screen items-center justify-center"> <p className="text-gray-600">Loading dashboard...</p> </main>
-);
-}
-
-if (error) {
-return ( <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6"> <p className="text-red-600">{error}</p>
-<button
-onClick={() => window.location.reload()}
-className="rounded-lg bg-black px-5 py-2 text-white"
->
-Try Again </button> </main>
-);
-}
-
-return ( 
-  <>
- <AdminNavbar />
-   <main className="min-h-screen bg-gray-100 p-6 md:p-10">
-   <div className="mx-auto max-w-7xl"> <div className="mb-8">
-   <h1 className="text-3xl font-bold text-gray-900">
-    Admin Dashboard </h1> 
-    <p className="mt-2 text-gray-600">
-    Manage users, organizers, events, and bookings. </p> </div>
-
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-      {dashboardCards.map((card) => (
-        <Link
-          key={card.title}
-          href={card.href}
-          className="rounded-xl bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+  if (error) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#FFECD1] p-6 text-stone-900">
+        <ShieldAlert className="h-12 w-12 text-red-600" />
+        <p className="font-semibold text-red-600">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="inline-flex items-center gap-2 rounded-2xl bg-[#3E000C] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#2B0008]"
         >
-          <h2 className="text-sm font-medium text-gray-500">
-            {card.title}
-          </h2>
-          <p className="mt-3 text-3xl font-bold text-gray-900">
-            {card.value}
-          </p>
-          <p className="mt-3 text-sm text-blue-600">
-            View details →
-          </p>
-        </Link>
-      ))}
-    </div>
+          <RefreshCw className="h-4 w-4" /> Try Again
+        </button>
+      </main>
+    );
+  }
 
-    {/* <div className="mt-10 rounded-xl bg-white p-6 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold text-gray-900">
-          Organizer Verification Notifications
-        </h2>
+  return (
+    <>
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 
-        <span className="rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800">
-          {
-            notifications.filter(
-              (notification) =>
-                notification.organizer?.verificationStatus === "pending"
-            ).length
-          } pending
-        </span>
-      </div>
+        .editorial-heading {
+          font-family: 'Cormorant Garamond', Georgia, serif;
+          letter-spacing: -0.02em;
+        }
+      `}</style>
 
-        {actionMessage && (
-          <p className="mt-4 text-sm text-green-700">
-            {actionMessage}
-          </p>
-        )}
+      <AdminNavbar />
 
-      {notificationError ? (
-        <p className="mt-4 text-sm text-red-600">{notificationError}</p>
-      ) : notifications.length === 0 ? (
-        <p className="mt-4 text-gray-500">
-          No organizer registration notifications yet.
-        </p>
-      ) : (
-        <div className="mt-5 space-y-4">
-          {notifications.map((notification) => (
-            <div
-              key={notification._id}
-              className="rounded-lg border border-gray-200 p-4"
-            >
-              <div className="flex flex-col justify-between gap-3 sm:flex-row">
+      <main className="min-h-screen bg-[#FFECD1] px-4 py-8 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1] md:p-10">
+        <div className="mx-auto max-w-7xl">
+          
+          {/* Header Section */}
+          <div className="mb-8 border-b border-[#F5D8B3] pb-6">
+            <span className="mb-1 inline-block rounded-lg bg-[#3E000C]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#3E000C]">
+              Super Admin Control Center
+            </span>
+            <h1 className="editorial-heading text-4xl font-bold tracking-tight text-[#3E000C] sm:text-5xl">
+              Admin Dashboard
+            </h1>
+            <p className="mt-1 text-sm text-stone-600">
+              Manage platform users, verify organizers, review events, and broadcast announcements.
+            </p>
+          </div>
+
+          {/* Stats Cards Grid */}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {dashboardCards.map(({ title, value, href, Icon }) => (
+              <Link
+                key={title}
+                href={href}
+                className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-[#F5D8B3] bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-[#3E000C]"
+              >
                 <div>
-                  <h3 className="font-semibold text-gray-900">
-                    {notification.organizer
-                      ? `${notification.organizer.firstName} ${notification.organizer.lastName}`
-                      : "Organizer information unavailable"}
-                  </h3>
-
-                  <p className="mt-1 text-sm text-gray-600">
-                    {notification.organizer?.email || "No email available"}
-                  </p>
-
-                  <p className="mt-2 text-sm text-gray-600">
-                    {notification.message}
-                  </p>
-
-                  <p className="mt-2 text-xs text-gray-400">
-                    {new Date(notification.createdAt).toLocaleString()}
+                  <div className="mb-4 flex items-center justify-between">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFECD1] text-[#3E000C]">
+                      <Icon className="h-6 w-6" />
+                    </span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-stone-400 group-hover:text-[#3E000C] transition-colors">
+                      View →
+                    </span>
+                  </div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                    {title}
+                  </h2>
+                  <p className="editorial-heading mt-1 text-4xl font-bold text-[#3E000C]">
+                    {value}
                   </p>
                 </div>
+              </Link>
+            ))}
+          </div>
 
-            <div className="flex flex-col items-start gap-3">
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  notification.organizer?.verificationStatus === "approved"
-                    ? "bg-green-100 text-green-800"
-                    : notification.organizer?.verificationStatus === "rejected"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-yellow-100 text-yellow-800"
-                }`}
-              >
-                {notification.organizer?.verificationStatus || "unknown"}
+          {/* Send Announcement Section */}
+          <section className="mt-10 rounded-3xl border border-[#F5D8B3] bg-white p-8 shadow-sm">
+            <div className="flex items-center gap-3 border-b border-stone-100 pb-4 mb-6">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFECD1] text-[#3E000C]">
+                <Megaphone className="h-6 w-6" />
               </span>
-
-            {notification.organizer?.verificationStatus === "pending" && ( <div className="flex flex-wrap gap-2">
-            <button
-            type="button"
-            onClick={() =>
-            handleOrganizerAction(notification.organizer._id, "approve")
-            }
-            disabled={actionLoading === notification.organizer._id}
-            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-            {actionLoading === notification.organizer._id
-            ? "Processing..."
-            : "Approve"} </button>
-
-
-              <button
-                type="button"
-                onClick={() =>
-                  handleOrganizerAction(notification.organizer._id, "reject")
-                }
-                disabled={actionLoading === notification.organizer._id}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Reject
-              </button>
-            </div>
-
-            )}
-
-            </div>
-
+              <div>
+                <h2 className="editorial-heading text-2xl font-bold text-[#3E000C]">
+                  Broadcast Important Announcement
+                </h2>
+                <p className="text-xs font-semibold text-stone-500">
+                  Send an instant in-app notification banner across all active platform users.
+                </p>
               </div>
             </div>
-          ))}
+
+            <form onSubmit={handleSendAnnouncement} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="announcement"
+                  className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]"
+                >
+                  Announcement Message Content
+                </label>
+
+                <textarea
+                  id="announcement"
+                  value={announcement}
+                  onChange={(event) => setAnnouncement(event.target.value)}
+                  placeholder="Enter your system-wide announcement here..."
+                  rows={4}
+                  maxLength={1000}
+                  required
+                  className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 p-4 text-sm text-stone-900 placeholder-stone-400 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                />
+              </div>
+
+              {announcementMessage && (
+                <div
+                  role="status"
+                  className="rounded-2xl border border-[#F5D8B3] bg-[#FFECD1]/40 p-4 text-xs font-bold uppercase tracking-wider text-[#3E000C]"
+                >
+                  📢 {announcementMessage}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={announcementLoading}
+                className="inline-flex items-center gap-2 rounded-2xl bg-[#3E000C] px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-white shadow-md shadow-[#3E000C]/20 transition-all hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {announcementLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Broadcasting...
+                  </>
+                ) : (
+                  <>
+                    <Megaphone className="h-4 w-4" /> Send Announcement
+                  </>
+                )}
+              </button>
+            </form>
+          </section>
+
+          {/* Quick Actions Panel */}
+          <div className="mt-10 rounded-3xl border border-[#F5D8B3] bg-white p-8 shadow-sm">
+            <h2 className="editorial-heading mb-6 text-2xl font-bold text-[#3E000C]">
+              Management Gateways
+            </h2>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Link
+                href="/admin/users"
+                className="group flex items-center justify-between rounded-2xl border border-[#F5D8B3] bg-[#FFECD1]/30 p-5 transition-all hover:bg-[#3E000C] hover:text-white"
+              >
+                <div className="flex items-center gap-3">
+                  <UserCheck className="h-5 w-5 text-[#3E000C] group-hover:text-white" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Manage Users</span>
+                </div>
+                <ArrowRight className="h-4 w-4 text-stone-400 group-hover:text-white" />
+              </Link>
+
+              <Link
+                href="/admin/events"
+                className="group flex items-center justify-between rounded-2xl border border-[#F5D8B3] bg-[#FFECD1]/30 p-5 transition-all hover:bg-[#3E000C] hover:text-white"
+              >
+                <div className="flex items-center gap-3">
+                  <CalendarDays className="h-5 w-5 text-[#3E000C] group-hover:text-white" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Manage Events</span>
+                </div>
+                <ArrowRight className="h-4 w-4 text-stone-400 group-hover:text-white" />
+              </Link>
+
+              <Link
+                href="/admin/bookings"
+                className="group flex items-center justify-between rounded-2xl border border-[#F5D8B3] bg-[#FFECD1]/30 p-5 transition-all hover:bg-[#3E000C] hover:text-white"
+              >
+                <div className="flex items-center gap-3">
+                  <ClipboardList className="h-5 w-5 text-[#3E000C] group-hover:text-white" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Manage Bookings</span>
+                </div>
+                <ArrowRight className="h-4 w-4 text-stone-400 group-hover:text-white" />
+              </Link>
+
+              <Link
+                href="/admin/reports"
+                className="group flex items-center justify-between rounded-2xl border border-[#F5D8B3] bg-[#FFECD1]/30 p-5 transition-all hover:bg-[#3E000C] hover:text-white"
+              >
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-[#3E000C] group-hover:text-white" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Manage Reports</span>
+                </div>
+                <ArrowRight className="h-4 w-4 text-stone-400 group-hover:text-white" />
+              </Link>
+            </div>
+          </div>
+
         </div>
-      )}
-    </div> */}
-
-    <section className="mt-8 rounded-xl bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-bold text-gray-900">
-        Send Important Announcement
-      </h2>
-
-      <p className="mt-2 text-sm text-gray-600">
-        Send an in-app notification to all users.
-      </p>
-
-      <form onSubmit={handleSendAnnouncement} className="mt-5 space-y-4">
-        <div>
-          <label
-            htmlFor="announcement"
-            className="mb-2 block font-medium text-gray-700"
-          >
-            Announcement Message
-          </label>
-
-          <textarea
-            id="announcement"
-            value={announcement}
-            onChange={(event) => setAnnouncement(event.target.value)}
-            placeholder="Enter your announcement here..."
-            rows={4}
-            maxLength={1000}
-            required
-            className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {announcementMessage && (
-          <p
-            role="status"
-            className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700"
-          >
-            {announcementMessage}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={announcementLoading}
-          className="rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {announcementLoading ? "Sending..." : "Send Announcement"}
-        </button>
-      </form>
-    </section>
-
-
-
-    <div className="mt-10 rounded-xl bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-semibold text-gray-900">
-        Quick Actions
-      </h2>
-
-      <div className="mt-5 flex flex-wrap gap-3">
-        <Link
-          href="/admin/users"
-          className="rounded-lg bg-gray-900 px-5 py-3 text-white hover:bg-gray-700"
-        >
-          Manage Users
-        </Link>
-        <Link
-          href="/admin/events"
-          className="rounded-lg bg-gray-900 px-5 py-3 text-white hover:bg-gray-700"
-        >
-          Manage Events
-        </Link>
-        <Link
-          href="/admin/bookings"
-          className="rounded-lg bg-gray-900 px-5 py-3 text-white hover:bg-gray-700"
-        >
-          Manage Bookings
-        </Link>
-        <Link
-          href="/admin/reports"
-          className="rounded-lg bg-gray-900 px-5 py-3 text-white hover:bg-gray-700"
-        >
-          Manage Reports
-        </Link>
-
-      </div>
-    </div>
-  </div>
-</main>
-</>
-);
+      </main>
+    </>
+  );
 }

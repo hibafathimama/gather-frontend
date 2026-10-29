@@ -7,6 +7,15 @@ import * as yup from "yup";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
+import {
+  Ticket,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 import type { AppDispatch, RootState } from "@/redux/store";
 import { loginUser } from "@/redux/slices/authSlice";
 
@@ -16,9 +25,7 @@ const loginSchema = yup.object({
     .email("Enter a valid email address")
     .required("Email is required"),
 
-  password: yup
-    .string()
-    .required("Password is required"),
+  password: yup.string().required("Password is required"),
 });
 
 type LoginForm = yup.InferType<typeof loginSchema>;
@@ -27,11 +34,10 @@ export default function LoginPage() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
 
-  const { loading } = useSelector(
-    (state: RootState) => state.auth
-  );
+  const { loading } = useSelector((state: RootState) => state.auth);
 
   const [loginError, setLoginError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -115,108 +121,144 @@ export default function LoginPage() {
     }
   };
 
+  const inputClass = (hasError: boolean) =>
+    `w-full rounded-lg border bg-white py-3 pl-11 pr-4 text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#3E000C] focus:ring-2 focus:ring-[#3E000C]/15 ${
+      hasError ? "border-red-500" : "border-stone-300"
+    }`;
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#FFECD1] px-4">
-      {/* Kept original max-w-md container size & p-8 padding */}
-      <div className="w-full max-w-md rounded-2xl border border-[#F5D8B3] bg-white p-8 shadow-md">
-        
-        {/* Header */}
-        <div className="mb-6 text-center">
-          <Link href="/" className="inline-block mb-2">
-            <span className="text-2xl font-bold tracking-tight text-[#3E000C]">
-              Gather<span className="text-[#3E000C]">.</span>
-            </span>
-          </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-[#3E000C]">
-            Sign In
-          </h1>
-          <p className="mt-1 text-sm text-stone-600">
-            Sign in to your Event Booking account
+    <main className="flex min-h-screen items-center justify-center bg-[#FFECD1] px-4 py-10 selection:bg-[#3E000C] selection:text-[#FFECD1]">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <Link
+          href="/"
+          className="mb-6 flex items-center justify-center gap-3"
+          aria-label="Gather home"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#3E000C] text-[#FFECD1]">
+            <Ticket className="h-5 w-5" />
+          </div>
+          <div className="leading-tight">
+            <p className="text-xl font-bold tracking-tight text-[#3E000C]">
+              Gather
+            </p>
+            <p className="text-xs text-stone-600">Event platform</p>
+          </div>
+        </Link>
+
+        <div className="rounded-xl border border-[#F5D8B3] bg-white p-8 shadow-sm">
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold tracking-tight text-[#3E000C]">
+              Welcome back
+            </h1>
+            <p className="mt-1 text-sm text-stone-600">
+              Sign in to book tickets or manage your events.
+            </p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+            {/* Email */}
+            <div>
+              <label
+                htmlFor="email"
+                className="mb-1.5 block text-sm font-medium text-stone-700"
+              >
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  aria-invalid={!!errors.email}
+                  {...register("email")}
+                  className={inputClass(!!errors.email)}
+                />
+              </div>
+              {errors.email && (
+                <p className="mt-1.5 text-sm text-red-600">
+                  {errors.email.message}
+                </p>
+              )}
+            </div>
+
+            {/* Password */}
+            <div>
+              <label
+                htmlFor="password"
+                className="mb-1.5 block text-sm font-medium text-stone-700"
+              >
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  aria-invalid={!!errors.password}
+                  {...register("password")}
+                  className={`${inputClass(!!errors.password)} pr-11`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  title={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-stone-500 transition hover:text-[#3E000C]"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="mt-1.5 text-sm text-red-600">
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
+
+            {/* Error message */}
+            {loginError && (
+              <p
+                role="alert"
+                className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                {loginError}
+              </p>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#3E000C] px-4 py-3 font-semibold text-white transition hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {loading ? "Signing in..." : "Sign in"}
+            </button>
+          </form>
+
+          {/* Footer */}
+          <p className="mt-6 text-center text-sm text-stone-600">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/register"
+              className="font-semibold text-[#3E000C] hover:underline"
+            >
+              Sign up
+            </Link>
           </p>
         </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          {/* Email Input */}
-          <div>
-            <label
-              htmlFor="email"
-              className="mb-1 block text-sm font-semibold text-[#3E000C]"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              autoComplete="email"
-              {...register("email")}
-              className={`w-full rounded-xl border bg-stone-50/50 px-4 py-3 text-stone-900 outline-none transition-all focus:bg-white focus:border-[#3E000C] focus:ring-4 focus:ring-[#3E000C]/15 ${
-                errors.email ? "border-red-500" : "border-stone-300"
-              }`}
-            />
-            {errors.email && (
-              <p className="mt-1 text-xs text-red-600 font-medium">
-                {errors.email.message}
-              </p>
-            )}
-          </div>
-
-          {/* Password Input */}
-          <div>
-            <label
-              htmlFor="password"
-              className="mb-1 block text-sm font-semibold text-[#3E000C]"
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              placeholder="Enter your password"
-              autoComplete="current-password"
-              {...register("password")}
-              className={`w-full rounded-xl border bg-stone-50/50 px-4 py-3 text-stone-900 outline-none transition-all focus:bg-white focus:border-[#3E000C] focus:ring-4 focus:ring-[#3E000C]/15 ${
-                errors.password ? "border-red-500" : "border-stone-300"
-              }`}
-            />
-            {errors.password && (
-              <p className="mt-1 text-xs text-red-600 font-medium">
-                {errors.password.message}
-              </p>
-            )}
-          </div>
-
-          {/* Error Message */}
-          {loginError && (
-            <p
-              role="alert"
-              className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600"
-            >
-              {loginError}
-            </p>
-          )}
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-xl bg-[#3E000C] px-4 py-3 font-semibold text-white transition-all hover:bg-[#2B0008] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
-          >
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
-        </form>
-
-        {/* Footer Link */}
-        <p className="mt-6 text-center text-sm text-stone-600">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/register"
-            className="font-semibold text-[#3E000C] hover:underline"
-          >
-            Sign Up
-          </Link>
-        </p>
       </div>
     </main>
   );

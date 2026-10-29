@@ -1,7 +1,20 @@
-"use client"
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  User,
+  Mail,
+  ShieldCheck,
+  Camera,
+  Pencil,
+  Save,
+  X,
+  ArrowLeft,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
 import OrganizerHeader from "@/components/OrganizerHeader";
 
 interface Profile {
@@ -38,34 +51,23 @@ export default function OrganizerProfilePage() {
         }
 
         const response = await fetch(`${backendUrl}/users/my-profile`, {
-            headers: {
-        Authorization: `Bearer ${token}`,
-            },
-            cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
         });
 
         const responseText = await response.text();
 
-        console.log("Request URL:", `${backendUrl}/users/my-profile`);
-        console.log("Response status:", response.status);
-        console.log("Response:", responseText);
-
         let result;
 
         try {
-            result = JSON.parse(responseText);
+          result = JSON.parse(responseText);
         } catch {
-            throw new Error(
-                "The server returned HTML instead of JSON. Check the API URL and backend route."
-            );
+          throw new Error(
+            "The server returned HTML instead of JSON. Check the API URL and backend route."
+          );
         }
-
-        if (!response.ok) {
-            throw new Error(result.message || "Failed to fetch profile.");
-        }
-
-        setProfile(result.data);
-        setFormData(result.data);
 
         if (!response.ok) {
           throw new Error(result.message || "Failed to fetch profile.");
@@ -74,9 +76,7 @@ export default function OrganizerProfilePage() {
         setProfile(result.data);
         setFormData(result.data);
       } catch (err: unknown) {
-        setError(
-          err instanceof Error ? err.message : "Something went wrong."
-        );
+        setError(err instanceof Error ? err.message : "Something went wrong.");
       } finally {
         setLoading(false);
       }
@@ -177,9 +177,7 @@ export default function OrganizerProfilePage() {
       setEditing(false);
       setMessage("Profile updated successfully!");
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Something went wrong."
-      );
+      setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSaving(false);
     }
@@ -195,12 +193,21 @@ export default function OrganizerProfilePage() {
     setMessage("");
   };
 
+  const inputClass =
+    "w-full rounded-lg border border-stone-300 bg-white py-3 pl-11 pr-4 text-stone-900 outline-none transition focus:border-[#3E000C] focus:ring-2 focus:ring-[#3E000C]/15 disabled:cursor-default disabled:border-stone-200 disabled:bg-stone-50 disabled:text-stone-700";
+  const labelClass = "mb-1.5 block text-sm font-medium text-stone-700";
+  const iconClass =
+    "pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400";
+
   if (loading) {
     return (
       <>
         <OrganizerHeader />
-        <main className="flex min-h-screen items-center justify-center bg-gray-100">
-          <p className="text-gray-600">Loading your profile...</p>
+        <main className="flex min-h-[calc(100vh-72px)] items-center justify-center bg-[#FFECD1] text-[#3E000C]">
+          <p className="flex items-center gap-2 font-medium">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading your profile...
+          </p>
         </main>
       </>
     );
@@ -210,16 +217,23 @@ export default function OrganizerProfilePage() {
     return (
       <>
         <OrganizerHeader />
-        <main className="min-h-screen bg-gray-100 p-6">
-          <div className="mx-auto max-w-3xl rounded-xl bg-white p-6 shadow">
-            <p className="text-red-600">
+        <main className="min-h-screen bg-[#FFECD1] px-4 py-10">
+          <div
+            role="alert"
+            className="mx-auto max-w-md rounded-xl border border-[#F5D8B3] bg-white p-8 text-center shadow-sm"
+          >
+            <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-red-50 text-red-600">
+              <AlertCircle className="h-6 w-6" />
+            </span>
+            <p className="mb-5 text-sm text-stone-700">
               {error || "Unable to load your profile."}
             </p>
             <Link
               href="/organizer/dashboard"
-              className="mt-4 inline-block text-blue-600 hover:underline"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#3E000C] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
             >
-              Back to Dashboard
+              <ArrowLeft className="h-4 w-4" />
+              Back to dashboard
             </Link>
           </div>
         </main>
@@ -227,217 +241,229 @@ export default function OrganizerProfilePage() {
     );
   }
 
-  const displayedImage =
-    previewImage || getProfileImageUrl(profile.image);
-
-
-
+  const displayedImage = previewImage || getProfileImageUrl(profile.image);
 
   return (
     <>
       <OrganizerHeader />
 
-      <main className="min-h-screen bg-gray-100 px-4 py-10">
-        <div className="mx-auto max-w-3xl">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">My Profile</h1>
-            <p className="mt-2 text-gray-600">
-              View and manage your organizer account information.
-            </p>
-          </div>
+      <main className="min-h-screen bg-[#FFECD1] px-4 py-8 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
+        <div className="mx-auto max-w-2xl">
+          <Link
+            href="/organizer/dashboard"
+            className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-[#3E000C] hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to dashboard
+          </Link>
 
-          <div className="rounded-2xl bg-white p-6 shadow-md sm:p-8">
-            <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b pb-6">
-              <div className="flex items-center gap-4">
-                {displayedImage ? (
-                  <img
-                    src={displayedImage}
-                    alt="Profile"
-                    width={64}
-                    height={64}
-                    className="h-16 w-16 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-2xl font-bold text-blue-700">
-                    {profile.firstName.charAt(0).toUpperCase()}
+          <div className="overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm">
+            {/* Profile banner */}
+            <div className="flex items-center gap-4 bg-[#3E000C] px-6 py-6 text-[#FFECD1]">
+              {displayedImage ? (
+                <img
+                  src={displayedImage}
+                  alt="Profile"
+                  width={64}
+                  height={64}
+                  className="h-16 w-16 shrink-0 rounded-full border-2 border-[#FFECD1]/40 object-cover"
+                />
+              ) : (
+                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-[#FFECD1] text-2xl font-bold text-[#3E000C]">
+                  {profile.firstName.charAt(0).toUpperCase()}
+                </div>
+              )}
+
+              <div className="min-w-0">
+                <h1 className="truncate text-xl font-bold tracking-tight text-white sm:text-2xl">
+                  {profile.firstName} {profile.lastName}
+                </h1>
+                <p className="mt-0.5 text-sm capitalize text-[#FFECD1]/75">
+                  {profile.role} account
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 sm:p-8">
+              <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-[#3E000C]">
+                    My profile
+                  </h2>
+                  <p className="mt-0.5 text-sm text-stone-600">
+                    View and manage your organizer account information.
+                  </p>
+                </div>
+
+                {!editing && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(profile);
+                      setEditing(true);
+                      setMessage("");
+                      setError("");
+                    }}
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit profile
+                  </button>
+                )}
+              </div>
+
+              {message && (
+                <p
+                  role="status"
+                  className="mb-5 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+                >
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                  {message}
+                </p>
+              )}
+
+              {error && (
+                <p
+                  role="alert"
+                  className="mb-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  {error}
+                </p>
+              )}
+
+              <form onSubmit={handleUpdate} className="space-y-5">
+                {editing && (
+                  <div>
+                    <span className={labelClass}>Profile image</span>
+                    <label
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#3E000C]/25 px-3.5 py-2 text-sm font-medium text-[#3E000C] transition focus-within:ring-2 focus-within:ring-[#3E000C]/30 hover:bg-[#3E000C] hover:text-white ${
+                        saving ? "pointer-events-none opacity-50" : ""
+                      }`}
+                    >
+                      <Camera className="h-4 w-4" />
+                      {previewImage ? "Choose a different image" : "Change image"}
+                      <input
+                        id="image"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleImageChange}
+                        disabled={saving}
+                        className="sr-only"
+                      />
+                    </label>
+                    <p className="mt-1.5 text-xs text-stone-500">
+                      JPG, PNG or WEBP. Maximum size: 2 MB.
+                      {previewImage && " The new image shows in the banner above."}
+                    </p>
                   </div>
                 )}
 
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-800">
-                    {profile.firstName} {profile.lastName}
-                  </h2>
-                  <p className="text-sm capitalize text-gray-500">
-                    {profile.role}
-                  </p>
-                </div>
-              </div>
-
-              {!editing && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormData(profile);
-                    setEditing(true);
-                    setMessage("");
-                    setError("");
-                  }}
-                  className="rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700"
-                >
-                  Edit Profile
-                </button>
-              )}
-            </div>
-
-            {message && (
-              <p className="mb-5 rounded-lg bg-green-100 p-3 text-green-700">
-                {message}
-              </p>
-            )}
-
-            {error && (
-              <p className="mb-5 rounded-lg bg-red-100 p-3 text-red-700">
-                {error}
-              </p>
-            )}
-
-            <form onSubmit={handleUpdate}>
-              {editing && (
-                <div className="mb-6">
-                  <label
-                    htmlFor="image"
-                    className="mb-2 block font-medium text-gray-700"
-                  >
-                    Update Profile Image
-                  </label>
-                  <input
-                    id="image"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleImageChange}
-                    disabled={saving}
-                    className="block w-full rounded-lg border border-gray-300 p-3 text-gray-700"
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    JPG, PNG, or WEBP. Maximum size: 2 MB.
-                  </p>
-                  {previewImage && (
-                    <div className="mt-4">
-                      <p className="mb-2 text-sm text-gray-600">
-                        Image preview
-                      </p>
-                      <img
-                        src={previewImage}
-                        alt="Selected profile preview"
-                        width={120}
-                        height={120}
-                        className="h-[120px] w-[120px] rounded-full object-cover"
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="firstName" className={labelClass}>
+                      First name
+                    </label>
+                    <div className="relative">
+                      <User className={iconClass} />
+                      <input
+                        id="firstName"
+                        name="firstName"
+                        type="text"
+                        value={formData.firstName}
+                        onChange={handleChange}
+                        disabled={!editing || saving}
+                        autoComplete="given-name"
+                        required
+                        className={inputClass}
                       />
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="firstName"
-                    className="mb-2 block font-medium text-gray-700"
-                  >
-                    First Name
-                  </label>
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    disabled={!editing || saving}
-                    required
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-800 outline-none focus:border-blue-500 disabled:bg-gray-100"
-                  />
-                </div>
+                  <div>
+                    <label htmlFor="lastName" className={labelClass}>
+                      Last name
+                    </label>
+                    <div className="relative">
+                      <User className={iconClass} />
+                      <input
+                        id="lastName"
+                        name="lastName"
+                        type="text"
+                        value={formData.lastName}
+                        onChange={handleChange}
+                        disabled={!editing || saving}
+                        autoComplete="family-name"
+                        required
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
 
-                <div>
-                  <label
-                    htmlFor="lastName"
-                    className="mb-2 block font-medium text-gray-700"
-                  >
-                    Last Name
-                  </label>
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    disabled={!editing || saving}
-                    required
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-800 outline-none focus:border-blue-500 disabled:bg-gray-100"
-                  />
-                </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="email" className={labelClass}>
+                      Email address
+                    </label>
+                    <div className="relative">
+                      <Mail className={iconClass} />
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        disabled={!editing || saving}
+                        autoComplete="email"
+                        required
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
 
-                <div className="sm:col-span-2">
-                  <label
-                    htmlFor="email"
-                    className="mb-2 block font-medium text-gray-700"
-                  >
-                    Email Address
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    disabled={!editing || saving}
-                    required
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-800 outline-none focus:border-blue-500 disabled:bg-gray-100"
-                  />
+                  <div className="sm:col-span-2">
+                    <label htmlFor="role" className={labelClass}>
+                      Account role
+                    </label>
+                    <div className="relative">
+                      <ShieldCheck className={iconClass} />
+                      <input
+                        id="role"
+                        type="text"
+                        value={profile.role}
+                        disabled
+                        className={`${inputClass} capitalize`}
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="sm:col-span-2">
-                  <label className="mb-2 block font-medium text-gray-700">
-                    Account Role
-                  </label>
-                  <input
-                    type="text"
-                    value={profile.role}
-                    disabled
-                    className="w-full rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 capitalize text-gray-600"
-                  />
-                </div>
-              </div>
+                {editing && (
+                  <div className="flex flex-wrap gap-3 pt-1">
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#3E000C] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {saving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                      {saving ? "Saving..." : "Save changes"}
+                    </button>
 
-              {editing && (
-                <div className="mt-8 flex flex-wrap gap-3">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="rounded-lg bg-green-600 px-5 py-3 font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {saving ? "Saving..." : "Save Changes"}
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={handleCancel}
-                    className="rounded-lg border border-gray-300 px-5 py-3 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </form>
-
-            <div className="mt-8 border-t pt-5">
-              <Link
-                href="/organizer/dashboard"
-                className="font-medium text-blue-600 hover:underline"
-              >
-                ← Back to Dashboard
-              </Link>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={handleCancel}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 disabled:opacity-60"
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </form>
             </div>
           </div>
         </div>

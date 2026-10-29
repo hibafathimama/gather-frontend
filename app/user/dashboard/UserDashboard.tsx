@@ -3,6 +3,18 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  Search,
+  SlidersHorizontal,
+  Heart,
+  CalendarDays,
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  AlertCircle,
+  CalendarX2,
+} from "lucide-react";
 import type { EventType } from "@/types/event";
 import type { UserType } from "@/types/user";
 import UserNavbar from "@/components/UserNavbar";
@@ -12,8 +24,13 @@ export default function UserDashboard() {
 
   const [user, setUser] = useState<UserType | null>(null);
   const [events, setEvents] = useState<EventType[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [favoriteMessage, setFavoriteMessage] = useState("");
+  const [updatingFavoriteId, setUpdatingFavoriteId] = useState<string | null>(
+    null
+  );
 
   // Pagination states
   const [page, setPage] = useState(1);
@@ -29,7 +46,7 @@ export default function UserDashboard() {
   const [searchTrigger, setSearchTrigger] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Check login and fetch events whenever the page changes
+  // Check login and fetch events when page or search changes.
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
@@ -49,14 +66,21 @@ export default function UserDashboard() {
     fetchEvents();
   }, [router, page, searchTrigger]);
 
-  // Fetch events for the current page
+  // Fetch events and the user's wishlist.
   const fetchEvents = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const params = new URLSearchParams();
+      const token = localStorage.getItem("token");
 
+      if (!token) {
+        setError("Please log in to view events.");
+        setEvents([]);
+        return;
+      }
+
+      const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", "6");
 
@@ -67,34 +91,128 @@ export default function UserDashboard() {
       if (minPrice !== "") params.set("minPrice", minPrice);
       if (maxPrice !== "") params.set("maxPrice", maxPrice);
 
-      const response = await fetch(`/api/events?${params.toString()}`);
+      const headers = {
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(`/api/events?${params.toString()}`, {
+        headers,
+        credentials: "include",
+      });
+
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || "Failed to fetch events");
+        throw new Error(result.message || "Failed to fetch events.");
       }
 
-      setEvents(result.data || []);
+      setEvents(Array.isArray(result.data) ? result.data : []);
+      setTotalPages(result.pagination?.totalPages ?? result.totalPages ?? 1);
 
-      setTotalPages(
-        result.pagination?.totalPages ??
-          result.totalPages ??
-          1
-      );
-    } catch (error) {
-      console.error("Error fetching events:", error);
+      // Fetch saved events from the backend.
+      const favoritesResponse = await fetch("/api/favorites", {
+        headers,
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      const favoritesResult = await favoritesResponse.json();
+
+      if (!favoritesResponse.ok) {
+        throw new Error(
+          favoritesResult.message || "Failed to fetch your wishlist."
+        );
+      }
+
+      const favorites = Array.isArray(favoritesResult.data)
+        ? favoritesResult.data
+        : [];
+
+      const ids = favorites
+        .map((favorite: { event?: string | { _id: string } | null }) =>
+          typeof favorite.event === "string"
+            ? favorite.event
+            : favorite.event?._id
+        )
+        .filter((id: string | undefined): id is string => Boolean(id));
+
+      setFavoriteIds(ids);
+    } catch (err: unknown) {
+      console.error("Error fetching events or wishlist:", err);
+
       setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to load events"
+        err instanceof Error ? err.message : "Failed to load dashboard data."
       );
     } finally {
       setLoading(false);
     }
   };
 
-  // Image path helper
-  const getImageUrl = (image?: string) => {
+  // Add or remove an event from the wishlist.
+  const handleFavorite = async (eventId: string) => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setFavoriteMessage("Please log in to manage your wishlist.");
+      return;
+    }
+
+    try {
+      setUpdatingFavoriteId(eventId);
+      setFavoriteMessage("");
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      };
+
+      if (favoriteIds.includes(eventId)) {
+        const response = await fetch(`/api/favorites/${eventId}`, {
+          method: "DELETE",
+          headers,
+          credentials: "include",
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || "Failed to remove event.");
+        }
+
+        setFavoriteIds((previous) => previous.filter((id) => id !== eventId));
+        setFavoriteMessage("Event removed from your wishlist.");
+      } else {
+        const response = await fetch("/api/favorites", {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({ eventId }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || "Failed to add event.");
+        }
+
+        setFavoriteIds((previous) =>
+          previous.includes(eventId) ? previous : [...previous, eventId]
+        );
+        setFavoriteMessage("Event added to your wishlist!");
+      }
+    } catch (err: unknown) {
+      console.error("Wishlist update error:", err);
+
+      setFavoriteMessage(
+        err instanceof Error ? err.message : "Unable to update your wishlist."
+      );
+    } finally {
+      setUpdatingFavoriteId(null);
+    }
+  };
+
+  // Image path helper.
+  const getImageUrl = (image?: string | null) => {
     if (!image) return "";
 
     if (image.startsWith("http://") || image.startsWith("https://")) {
@@ -102,67 +220,79 @@ export default function UserDashboard() {
     }
 
     const backendUrl = (
-      process.env.NEXT_PUBLIC_BACKEND_URL ||
-      "http://localhost:5000/api"
+      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api"
     ).replace(/\/api\/?$/, "");
 
-    return `${backendUrl}${image.startsWith("/") ? "" : "/"}${image}`;
+    const imagePath = image.startsWith("/") ? image : `/${image}`;
+
+    return `${backendUrl}${imagePath}`;
   };
+
+  const runSearch = () => {
+    setPage(1);
+    setSearchTrigger((current) => current + 1);
+  };
+
+  const inputClass =
+    "w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#3E000C] focus:ring-2 focus:ring-[#3E000C]/15";
+  const labelClass = "mb-1.5 block text-sm font-medium text-stone-700";
 
   return (
     <div className="min-h-screen bg-[#FFECD1] px-4 py-8 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
       <div className="mx-auto max-w-7xl">
         <UserNavbar />
 
-        {/* Welcome Hero Section */}
-        <section className="relative my-8 overflow-hidden rounded-3xl bg-[#3E000C] p-8 sm:p-10 text-[#FFECD1] shadow-xl">
-          <div className="relative z-10 max-w-xl">
-            <span className="mb-3 inline-block rounded-lg bg-white/10 px-3 py-1 text-xs font-semibold tracking-wider uppercase backdrop-blur-md">
-              Attendee Dashboard
-            </span>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-              Welcome back, {user?.firstName}!
-            </h2>
-            <p className="mt-2 text-sm text-stone-300 sm:text-base">
-              Discover upcoming live experiences, concerts, and professional seminars. Book your next ticket today.
-            </p>
-            <div className="mt-6">
-              <Link
-                href="/events"
-                className="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#3E000C] shadow-md transition-all hover:bg-[#FFECD1] active:scale-95"
-              >
-                Browse All Events
-              </Link>
-            </div>
+        {/* Welcome section */}
+        <section className="my-8 rounded-2xl bg-[#3E000C] px-6 py-8 text-[#FFECD1] sm:px-10 sm:py-10">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Welcome back, {user?.firstName}
+          </h1>
+
+          <p className="mt-2 max-w-xl text-sm text-[#FFECD1]/80 sm:text-base">
+            Find upcoming concerts, workshops and seminars, and book your next
+            ticket.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/events"
+              className="inline-flex items-center justify-center rounded-lg bg-[#FFECD1] px-5 py-2.5 text-sm font-semibold text-[#3E000C] transition hover:bg-white"
+            >
+              Browse all events
+            </Link>
+
+            <Link
+              href="/user/wishlist"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFECD1]/40 px-5 py-2.5 text-sm font-semibold text-[#FFECD1] transition hover:bg-white/10"
+            >
+              <Heart className="h-4 w-4" />
+              My wishlist ({favoriteIds.length})
+            </Link>
           </div>
         </section>
 
-        {/* Search & Action Bar */}
+        {/* Search bar */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
             <input
               type="text"
               value={searchName}
               onChange={(e) => setSearchName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  setPage(1);
-                  setSearchTrigger((current) => current + 1);
-                }
+                if (e.key === "Enter") runSearch();
               }}
-              placeholder="Search by event name..."
-              className="w-full rounded-2xl border border-[#F5D8B3] bg-white px-5 py-3.5 text-stone-900 placeholder-stone-400 shadow-sm outline-none transition-all focus:border-[#3E000C] focus:ring-4 focus:ring-[#3E000C]/10"
+              placeholder="Search by event name"
+              aria-label="Search by event name"
+              className="w-full rounded-lg border border-[#F5D8B3] bg-white py-3 pl-11 pr-4 text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#3E000C] focus:ring-2 focus:ring-[#3E000C]/15"
             />
           </div>
 
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => {
-                setPage(1);
-                setSearchTrigger((current) => current + 1);
-              }}
-              className="rounded-2xl bg-[#3E000C] px-6 py-3.5 font-bold text-white shadow-sm transition-all hover:bg-[#2B0008] active:scale-95"
+              onClick={runSearch}
+              className="rounded-lg bg-[#3E000C] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
             >
               Search
             </button>
@@ -170,82 +300,81 @@ export default function UserDashboard() {
             <button
               type="button"
               onClick={() => setShowFilters((current) => !current)}
-              className="rounded-2xl border border-[#F5D8B3] bg-white px-5 py-3.5 font-semibold text-stone-700 shadow-sm transition-all hover:bg-stone-50"
+              aria-expanded={showFilters}
+              className="inline-flex items-center gap-2 rounded-lg border border-[#F5D8B3] bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
             >
-              {showFilters ? "Hide Filters" : "Filters ▾"}
+              <SlidersHorizontal className="h-4 w-4" />
+              Filters
             </button>
           </div>
         </div>
 
-        {/* Expandable Advanced Filters Drawer */}
+        {/* Filters */}
         {showFilters && (
-          <div className="mb-8 grid gap-4 rounded-3xl border border-[#F5D8B3] bg-white p-6 shadow-sm sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mb-8 grid gap-4 rounded-xl border border-[#F5D8B3] bg-white p-5 sm:grid-cols-2 lg:grid-cols-5">
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">Category</label>
+              <label className={labelClass}>Category</label>
               <input
                 type="text"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                placeholder="e.g., Tech, Music"
-                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:bg-white focus:border-[#3E000C]"
+                placeholder="e.g. Tech, Music"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">Location</label>
+              <label className={labelClass}>Location</label>
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g., New York"
-                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:bg-white focus:border-[#3E000C]"
+                placeholder="e.g. Kozhikode"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">Date</label>
+              <label className={labelClass}>Date</label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:bg-white focus:border-[#3E000C]"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">Min Price (₹)</label>
+              <label className={labelClass}>Min price (₹)</label>
               <input
                 type="number"
                 min="0"
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
                 placeholder="0"
-                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:bg-white focus:border-[#3E000C]"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">Max Price (₹)</label>
+              <label className={labelClass}>Max price (₹)</label>
               <input
                 type="number"
                 min="0"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
                 placeholder="10000"
-                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:bg-white focus:border-[#3E000C]"
+                className={inputClass}
               />
             </div>
 
-            <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-5 pt-2">
+            <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-5">
               <button
                 type="button"
-                onClick={() => {
-                  setPage(1);
-                  setSearchTrigger((current) => current + 1);
-                }}
-                className="rounded-xl bg-[#3E000C] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#2B0008]"
+                onClick={runSearch}
+                className="rounded-lg bg-[#3E000C] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
               >
-                Apply Filters
+                Apply filters
               </button>
 
               <button
@@ -256,145 +385,204 @@ export default function UserDashboard() {
                   setDate("");
                   setMinPrice("");
                   setMaxPrice("");
-                  setPage(1);
-                  setSearchTrigger((current) => current + 1);
+                  runSearch();
                 }}
-                className="rounded-xl border border-stone-200 bg-stone-100 px-5 py-2.5 text-xs font-semibold text-stone-700 transition-all hover:bg-stone-200"
+                className="rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
               >
-                Clear All
+                Clear all
               </button>
             </div>
           </div>
         )}
 
-        {/* Section Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <h3 className="text-2xl font-black tracking-tight text-[#3E000C]">
-            Upcoming Events
-          </h3>
-          <span className="text-xs font-semibold text-stone-600">
-            Showing page {page} of {totalPages}
+        {/* Section header */}
+        <div className="mb-5 flex items-baseline justify-between">
+          <h2 className="text-xl font-bold tracking-tight text-[#3E000C] sm:text-2xl">
+            Upcoming events
+          </h2>
+          <span className="text-sm text-stone-600">
+            Page {page} of {totalPages}
           </span>
         </div>
 
-        {/* Events Content Area */}
+        {favoriteMessage && (
+          <p
+            role="status"
+            aria-live="polite"
+            className="mb-5 rounded-lg border border-[#F5D8B3] bg-white px-4 py-3 text-sm text-[#3E000C]"
+          >
+            {favoriteMessage}
+          </p>
+        )}
+
+        {/* Events */}
         {loading ? (
-          <div className="py-20 text-center text-stone-600 font-medium">
+          <div className="flex items-center justify-center gap-2 py-20 text-stone-600">
+            <Loader2 className="h-5 w-5 animate-spin" />
             Loading events...
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-600 shadow-sm">
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
           </div>
         ) : events.length === 0 ? (
-          <div className="rounded-3xl border border-[#F5D8B3] bg-white p-12 text-center shadow-sm">
-            <p className="text-stone-500 font-medium">No events found matching your criteria.</p>
+          <div className="rounded-xl border border-[#F5D8B3] bg-white p-12 text-center">
+            <CalendarX2 className="mx-auto mb-3 h-8 w-8 text-[#3E000C]/60" />
+            <p className="text-stone-600">
+              No events match your search. Try changing or clearing the
+              filters.
+            </p>
           </div>
         ) : (
           <>
-            {/* Event Cards Grid */}
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {events.map((event) => {
                 const imageUrl = getImageUrl(event.image);
+                const isFavorite = favoriteIds.includes(event._id);
+                const isUpdating = updatingFavoriteId === event._id;
 
                 return (
-                  <div
+                  <article
                     key={event._id}
-                    className="group overflow-hidden rounded-2xl border border-[#F5D8B3] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl flex flex-col justify-between"
+                    className="flex flex-col overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm transition-shadow hover:shadow-md"
                   >
-                    {/* Event Image & Floating Badges */}
-                    <div className="relative h-52 w-full overflow-hidden bg-stone-100">
+                    <div className="relative h-48 w-full overflow-hidden bg-stone-100">
                       {imageUrl ? (
                         <img
                           src={imageUrl}
                           alt={event.eventName}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          className="h-full w-full object-cover"
                           onError={(e) => {
                             console.error("Image failed:", imageUrl);
-                            (e.target as HTMLElement).style.display = "none";
+                            e.currentTarget.style.display = "none";
                           }}
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-stone-400">
+                        <div className="flex h-full w-full items-center justify-center text-sm text-stone-400">
                           No image available
                         </div>
                       )}
 
-                      {/* Category Badge */}
                       {event.category && (
-                        <span className="absolute top-3 left-3 rounded-lg bg-[#3E000C]/90 px-3 py-1 text-xs font-bold tracking-wide text-[#FFECD1] backdrop-blur-md shadow-sm">
+                        <span className="absolute left-3 top-3 rounded-md bg-[#3E000C] px-2.5 py-1 text-xs font-medium text-[#FFECD1]">
                           {event.category}
                         </span>
                       )}
 
-                      {/* Ticket Price Badge */}
-                      <span className="absolute top-3 right-3 rounded-lg bg-white/95 px-3 py-1 text-xs font-extrabold text-[#3E000C] backdrop-blur-md shadow-sm">
-                        {event.ticketPrice === undefined || event.ticketPrice === 0
+                      <span className="absolute right-3 top-3 rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-[#3E000C] shadow-sm">
+                        {event.ticketPrice === undefined ||
+                        event.ticketPrice === 0
                           ? "Free"
                           : `₹${event.ticketPrice}`}
                       </span>
+
+                      {/* Wishlist button */}
+                      <button
+                        type="button"
+                        onClick={() => handleFavorite(event._id)}
+                        disabled={isUpdating}
+                        aria-label={
+                          isFavorite
+                            ? "Remove from wishlist"
+                            : "Add to wishlist"
+                        }
+                        aria-pressed={isFavorite}
+                        title={
+                          isFavorite
+                            ? "Remove from wishlist"
+                            : "Add to wishlist"
+                        }
+                        className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-md transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Heart
+                          className={`h-5 w-5 ${
+                            isFavorite
+                              ? "fill-red-600 text-red-600"
+                              : "text-stone-500"
+                          }`}
+                        />
+                      </button>
                     </div>
 
-                    {/* Card Body Details */}
-                    <div className="p-5 flex flex-col flex-1 justify-between space-y-4">
+                    <div className="flex flex-1 flex-col gap-4 p-5">
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs font-semibold text-stone-500">
-                          <span>📅 {new Date(event.date).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</span>
+                        <h3
+                          className="line-clamp-1 text-lg font-semibold text-[#3E000C]"
+                          title={event.eventName}
+                        >
+                          {event.eventName}
+                        </h3>
+
+                        <div className="flex flex-col gap-1 text-sm text-stone-600">
+                          <span className="flex items-center gap-2">
+                            <CalendarDays className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+                            {new Date(event.date).toLocaleDateString("en-IN", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+
                           {event.venue && (
-                            <span className="truncate max-w-[130px]" title={event.venue}>
-                              📍 {event.venue}
+                            <span className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+                              <span className="truncate" title={event.venue}>
+                                {event.venue}
+                              </span>
                             </span>
                           )}
                         </div>
-
-                        <h4 className="text-lg font-bold tracking-tight text-[#3E000C] line-clamp-1">
-                          {event.eventName}
-                        </h4>
                       </div>
 
-                      {/* Action Links */}
-                      <div className="grid grid-cols-2 gap-2 pt-3 border-t border-stone-100">
+                      {/* Actions */}
+                      <div className="mt-auto grid grid-cols-2 gap-2">
                         <Link
                           href={`/events/${event._id}`}
-                          className="flex items-center justify-center rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-xs font-bold text-stone-700 transition-all hover:border-[#3E000C] hover:text-[#3E000C]"
+                          className="flex items-center justify-center rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm font-semibold text-stone-700 transition hover:border-[#3E000C] hover:text-[#3E000C]"
                         >
-                          View Details
+                          View details
                         </Link>
 
                         <Link
                           href={`/events/${event._id}/book`}
-                          className="flex items-center justify-center rounded-xl bg-[#3E000C] px-3 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#2B0008]"
+                          className="flex items-center justify-center rounded-lg bg-[#3E000C] px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
                         >
-                          Book Ticket
+                          Book ticket
                         </Link>
                       </div>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
 
-            {/* Pagination Controls */}
+            {/* Pagination */}
             {totalPages > 1 && (
               <div className="mt-10 flex flex-wrap items-center justify-center gap-4 pb-8">
                 <button
                   onClick={() => setPage((current) => current - 1)}
                   disabled={page === 1 || loading}
-                  className="rounded-xl border border-[#3E000C] bg-white px-6 py-3 text-sm font-bold text-[#3E000C] shadow-sm transition-all hover:bg-[#3E000C]/5 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[#3E000C] bg-white px-4 py-2.5 text-sm font-semibold text-[#3E000C] transition hover:bg-[#3E000C]/5 disabled:cursor-not-allowed disabled:opacity-40"
                 >
+                  <ChevronLeft className="h-4 w-4" />
                   Previous
                 </button>
 
-                <span className="font-bold text-stone-800 text-sm">
+                <span className="text-sm font-medium text-stone-700">
                   Page {page} of {totalPages}
                 </span>
 
                 <button
                   onClick={() => setPage((current) => current + 1)}
                   disabled={page === totalPages || loading}
-                  className="rounded-xl bg-[#3E000C] px-6 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex items-center gap-1 rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Next
+                  <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
             )}

@@ -3,6 +3,20 @@
 import { Suspense, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import {
+  Ticket,
+  Compass,
+  CalendarDays,
+  Clock,
+  MapPin,
+  Flag,
+  X,
+  Send,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  CalendarX2,
+} from "lucide-react";
 import api from "@/lib/api";
 import type { EventType } from "@/types/event";
 
@@ -38,9 +52,7 @@ function EventDetailsContent() {
     }
   }, [id]);
 
-  const handleReportSubmit = async (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
+  const handleReportSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!reason) {
@@ -88,22 +100,34 @@ function EventDetailsContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FFECD1] text-[#3E000C] font-semibold">
-        Loading event...
+      <div className="flex min-h-screen items-center justify-center bg-[#FFECD1] text-[#3E000C]">
+        <p className="flex items-center gap-2 font-medium">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Loading event...
+        </p>
       </div>
     );
   }
 
   if (!event) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#FFECD1] p-6 text-center">
-        <div className="w-full max-w-md rounded-2xl border border-[#F5D8B3] bg-white p-8 shadow-sm">
-          <p className="text-lg font-bold text-[#3E000C]">Event not found.</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#FFECD1] p-6">
+        <div className="w-full max-w-md rounded-xl border border-[#F5D8B3] bg-white p-8 text-center shadow-sm">
+          <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-[#FFECD1] text-[#3E000C]">
+            <CalendarX2 className="h-6 w-6" />
+          </span>
+          <p className="text-lg font-semibold text-[#3E000C]">
+            Event not found
+          </p>
+          <p className="mt-1 text-sm text-stone-600">
+            It may have been removed or the link is incorrect.
+          </p>
           <Link
             href="/events"
-            className="mt-4 inline-flex items-center justify-center rounded-xl bg-[#3E000C] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#2B0008]"
+            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#3E000C] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
           >
-            Back to Events
+            <Compass className="h-4 w-4" />
+            Back to events
           </Link>
         </div>
       </div>
@@ -118,40 +142,61 @@ function EventDetailsContent() {
         }${event.image}`
     : "";
 
+  const showImage = imageUrl && !imageError;
+
+  const inputClass =
+    "w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#3E000C] focus:ring-2 focus:ring-[#3E000C]/15";
+
+  const details = [
+    {
+      label: "Date",
+      value: new Date(event.date).toLocaleDateString("en-IN", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }),
+      Icon: CalendarDays,
+      wide: false,
+    },
+    ...(event.time
+      ? [{ label: "Time", value: event.time, Icon: Clock, wide: false }]
+      : []),
+    ...(event.venue
+      ? [{ label: "Venue", value: event.venue, Icon: MapPin, wide: true }]
+      : []),
+  ];
+
   return (
-    <div className="min-h-screen bg-[#FFECD1] px-4 py-8 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
+    <div className="min-h-screen bg-[#FFECD1] px-4 py-6 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
       <div className="mx-auto max-w-3xl">
-        
-        {/* Navigation Header */}
-        <header className="mb-8 flex items-center justify-between border-b border-[#F5D8B3] pb-6">
-          <Link href="/user/dashboard" className="flex items-center gap-3 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#3E000C] text-lg font-bold text-[#FFECD1] shadow-sm transition-transform group-hover:scale-105">
-              ✦
+        {/* Header */}
+        <header className="mb-8 flex items-center justify-between border-b border-[#F5D8B3] pb-5">
+          <Link href="/user/dashboard" className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3E000C] text-[#FFECD1]">
+              <Ticket className="h-5 w-5" />
             </div>
-            <div>
-              <h1 className="text-xl font-black tracking-tight text-[#3E000C]">
-                Gather<span className="text-[#3E000C]/70">.</span>
-              </h1>
-              <p className="text-[11px] font-medium tracking-wide text-stone-500 uppercase">
-                Event Details
+            <div className="leading-tight">
+              <p className="text-lg font-bold tracking-tight text-[#3E000C]">
+                Gather
               </p>
+              <p className="text-xs text-stone-600">Event platform</p>
             </div>
           </Link>
 
           <Link
             href="/events"
-            className="rounded-xl border border-[#3E000C]/20 bg-white px-5 py-2.5 text-sm font-bold text-[#3E000C] transition-all hover:bg-[#3E000C] hover:text-white shadow-sm"
+            className="flex h-10 items-center gap-2 rounded-lg border border-[#3E000C]/25 bg-white px-3.5 text-sm font-medium text-[#3E000C] transition-colors hover:bg-[#3E000C] hover:text-white"
           >
-            All Events
+            <Compass className="h-4 w-4" />
+            <span className="hidden sm:inline">All events</span>
           </Link>
         </header>
 
-        {/* Event Card Container */}
-        <div className="overflow-hidden rounded-3xl border border-[#F5D8B3] bg-white shadow-sm">
-          
-          {/* Event Image Banner */}
-          {imageUrl && !imageError ? (
-            <div className="relative h-72 w-full bg-stone-100">
+        {/* Event card */}
+        <article className="overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm">
+          {/* Image */}
+          {showImage ? (
+            <div className="relative h-64 w-full bg-stone-100 sm:h-72">
               <img
                 src={imageUrl}
                 alt={event.eventName}
@@ -159,86 +204,89 @@ function EventDetailsContent() {
                 onError={() => setImageError(true)}
               />
               {event.category && (
-                <span className="absolute top-4 left-4 rounded-xl bg-[#3E000C]/90 px-3.5 py-1.5 text-xs font-bold tracking-wide text-[#FFECD1] backdrop-blur-md shadow-sm">
+                <span className="absolute left-4 top-4 rounded-md bg-[#3E000C] px-2.5 py-1 text-xs font-medium text-[#FFECD1]">
                   {event.category}
                 </span>
               )}
             </div>
           ) : (
-            <div className="flex h-56 items-center justify-center bg-stone-100 text-xs font-semibold text-stone-400">
-              {event.image
-                ? "Event image could not be loaded"
-                : "No event image available"}
+            <div className="flex h-48 flex-col items-center justify-center gap-2 bg-[#3E000C] text-[#FFECD1]">
+              <Ticket className="h-10 w-10 opacity-80" />
+              <p className="text-sm text-[#FFECD1]/75">
+                {event.image
+                  ? "Event image could not be loaded"
+                  : "No event image available"}
+              </p>
             </div>
           )}
 
-          {/* Body Content */}
-          <div className="p-8 space-y-6">
+          {/* Content */}
+          <div className="space-y-6 p-6 sm:p-8">
             <div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-[#3E000C]">
-                {event.eventName}
-              </h2>
-              {event.category && !imageUrl && (
-                <p className="mt-2 text-sm font-bold text-[#3E000C]">
+              {event.category && !showImage && (
+                <span className="mb-2 inline-block rounded-md bg-[#FFECD1] px-2.5 py-1 text-xs font-medium text-[#3E000C]">
                   {event.category}
-                </p>
-              )}
-            </div>
-
-            {/* Meta Details Grid */}
-            <div className="grid gap-4 rounded-2xl border border-stone-200 bg-stone-50/50 p-5 sm:grid-cols-2 text-sm text-stone-700">
-              <div>
-                <span className="block text-xs font-bold uppercase tracking-wider text-[#3E000C] mb-1">Date</span>
-                <span className="font-semibold text-stone-900">
-                  📅 {new Date(event.date).toLocaleDateString("en-IN", { month: "long", day: "numeric", year: "numeric" })}
                 </span>
-              </div>
-
-              {event.time && (
-                <div>
-                  <span className="block text-xs font-bold uppercase tracking-wider text-[#3E000C] mb-1">Time</span>
-                  <span className="font-semibold text-stone-900">🕒 {event.time}</span>
-                </div>
               )}
-
-              {event.venue && (
-                <div className="sm:col-span-2">
-                  <span className="block text-xs font-bold uppercase tracking-wider text-[#3E000C] mb-1">Venue</span>
-                  <span className="font-semibold text-stone-900">📍 {event.venue}</span>
-                </div>
-              )}
+              <h1 className="text-2xl font-bold tracking-tight text-[#3E000C] sm:text-3xl">
+                {event.eventName}
+              </h1>
             </div>
+
+            {/* Details */}
+            <dl className="grid gap-5 rounded-lg bg-[#FFECD1]/40 p-5 sm:grid-cols-2">
+              {details.map(({ label, value, Icon, wide }) => (
+                <div
+                  key={label}
+                  className={`flex items-start gap-3 ${
+                    wide ? "sm:col-span-2" : ""
+                  }`}
+                >
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-[#3E000C]">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <dt className="text-sm text-stone-500">{label}</dt>
+                    <dd className="font-semibold text-stone-900">{value}</dd>
+                  </div>
+                </div>
+              ))}
+            </dl>
 
             {/* Description */}
             {event.description && (
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[#3E000C] mb-2">About Event</h3>
-                <p className="text-stone-600 leading-relaxed text-sm">
+                <h2 className="mb-2 text-lg font-semibold text-[#3E000C]">
+                  About this event
+                </h2>
+                <p className="text-sm leading-relaxed text-stone-600 sm:text-base">
                   {event.description}
                 </p>
               </div>
             )}
 
-            {/* Ticket Pricing & Book Action */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-stone-100">
+            {/* Price and booking */}
+            <div className="flex flex-col gap-4 border-t border-stone-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <span className="block text-xs font-semibold text-stone-500 uppercase tracking-wider">Ticket Price</span>
-                <span className="text-2xl font-black text-[#3E000C]">
-                  {event.ticketPrice === undefined || event.ticketPrice === 0 ? "Free" : `₹${event.ticketPrice}`}
-                </span>
+                <p className="text-sm text-stone-500">Ticket price</p>
+                <p className="text-2xl font-bold text-[#3E000C]">
+                  {event.ticketPrice === undefined || event.ticketPrice === 0
+                    ? "Free"
+                    : `₹${event.ticketPrice}`}
+                </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => alert("Ticket booking will be added next!")}
-                className="rounded-xl bg-[#3E000C] px-8 py-3.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#2B0008] active:scale-95"
+              <Link
+                href={`/events/${event._id}/book`}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#3E000C] px-8 py-3 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
               >
-                Book Tickets
-              </button>
+                <Ticket className="h-4 w-4" />
+                Book tickets
+              </Link>
             </div>
 
-            {/* Report Section */}
-            <div className="mt-8 border-t border-stone-200 pt-6">
+            {/* Report section */}
+            <div className="border-t border-stone-100 pt-5">
               <button
                 type="button"
                 onClick={() => {
@@ -246,31 +294,48 @@ function EventDetailsContent() {
                   setReportError("");
                   setReportMessage("");
                 }}
-                className="rounded-xl border border-red-300 bg-red-50/50 px-5 py-2.5 text-xs font-bold text-red-700 transition-all hover:bg-red-100 shadow-sm"
+                aria-expanded={showReportForm}
+                className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50"
               >
-                {showReportForm ? "Close Report Form" : "Report Event"}
+                {showReportForm ? (
+                  <X className="h-4 w-4" />
+                ) : (
+                  <Flag className="h-4 w-4" />
+                )}
+                {showReportForm ? "Close report form" : "Report event"}
               </button>
 
               {reportMessage && (
-                <p className="mt-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-800">
+                <p
+                  role="status"
+                  className="mt-4 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+                >
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                   {reportMessage}
                 </p>
               )}
 
               {reportError && (
-                <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+                <p
+                  role="alert"
+                  className="mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   {reportError}
                 </p>
               )}
 
               {showReportForm && (
-                <form onSubmit={handleReportSubmit} className="mt-5 space-y-4 rounded-2xl border border-stone-200 bg-stone-50/50 p-6 shadow-inner">
+                <form
+                  onSubmit={handleReportSubmit}
+                  className="mt-5 space-y-4 rounded-lg border border-stone-200 bg-stone-50/60 p-5"
+                >
                   <div>
                     <label
                       htmlFor="reason"
-                      className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#3E000C]"
+                      className="mb-1.5 block text-sm font-medium text-stone-700"
                     >
-                      Reason for reporting *
+                      Reason for reporting
                     </label>
 
                     <select
@@ -278,7 +343,7 @@ function EventDetailsContent() {
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                       required
-                      className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 outline-none focus:border-[#3E000C]"
+                      className={inputClass}
                     >
                       <option value="">Select a reason</option>
                       <option value="Fake or suspicious event">
@@ -300,7 +365,7 @@ function EventDetailsContent() {
                   <div>
                     <label
                       htmlFor="description"
-                      className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#3E000C]"
+                      className="mb-1.5 block text-sm font-medium text-stone-700"
                     >
                       Additional details (optional)
                     </label>
@@ -312,23 +377,27 @@ function EventDetailsContent() {
                       maxLength={2000}
                       rows={4}
                       placeholder="Explain why you are reporting this event..."
-                      className="w-full rounded-xl border border-stone-300 bg-white p-4 text-sm text-stone-900 outline-none focus:border-[#3E000C]"
+                      className={inputClass}
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="rounded-xl bg-red-600 px-6 py-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {submitting ? "Submitting..." : "Submit Report"}
+                    {submitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    {submitting ? "Submitting..." : "Submit report"}
                   </button>
                 </form>
               )}
             </div>
-
           </div>
-        </div>
+        </article>
       </div>
     </div>
   );
@@ -338,8 +407,11 @@ export default function EventDetailsPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#FFECD1] text-[#3E000C] font-semibold">
-          Loading event...
+        <div className="flex min-h-screen items-center justify-center bg-[#FFECD1] text-[#3E000C]">
+          <p className="flex items-center gap-2 font-medium">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading event...
+          </p>
         </div>
       }
     >

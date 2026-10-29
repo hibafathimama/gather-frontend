@@ -51,6 +51,7 @@ export default function RegisterPage() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState("");
   const [imageError, setImageError] = useState("");
+
   const {
     register,
     handleSubmit,
@@ -63,102 +64,103 @@ export default function RegisterPage() {
   });
 
   // Handle profile image selection
-const handleImageChange = (
-  event: React.ChangeEvent<HTMLInputElement>
-) => {
-  const file = event.target.files?.[0];
+  const handleImageChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
 
-  setImageError("");
-  setSelectedImage(null);
-  setPreviewImage("");
-
-  if (!file) return;
-
-  const allowedTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ];
-
-  // Check image type
-  if (!allowedTypes.includes(file.type)) {
-    setImageError("Only JPG, PNG, and WEBP images are allowed.");
-    event.target.value = "";
-    return;
-  }
-
-  // Check image size
-  if (file.size > 2 * 1024 * 1024) {
-    setImageError("Image size must not exceed 2 MB.");
-    event.target.value = "";
-    return;
-  }
-
-  // Image is valid
-  setSelectedImage(file);
-  setPreviewImage(URL.createObjectURL(file));
-};
-
-
-
-const onSubmit = async (data: RegisterForm) => {
-  // Check whether a profile image is selected
-  if (!selectedImage) {
-    setImageError("Profile image is required.");
-    return;
-  }
-
-  try {
-    setLoading(true);
-    setServerError("");
     setImageError("");
-    setSuccessMessage("");
+    setSelectedImage(null);
+    setPreviewImage("");
 
-    // Create FormData
-    const formData = new FormData();
+    if (!file) return;
 
-    formData.append("firstName", data.firstName);
-    formData.append("lastName", data.lastName);
-    formData.append("email", data.email);
-    formData.append("password", data.password);
-    formData.append("role", data.role);
-    formData.append("image", selectedImage);
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
 
-    // Send registration request
-    const response = await api.post(
-      "/users/register",
-      formData
-    );
+    // Check image type
+    if (!allowedTypes.includes(file.type)) {
+      setImageError("Only JPG, PNG, and WEBP images are allowed.");
+      event.target.value = "";
+      return;
+    }
 
-    setSuccessMessage(
-      response.data.message || "Registration successful!"
-    );
+    // Check image size
+    if (file.size > 2 * 1024 * 1024) {
+      setImageError("Image size must not exceed 2 MB.");
+      event.target.value = "";
+      return;
+    }
 
-    setTimeout(() => {
-      router.push("/login");
-    }, 1500);
-  } catch (error: any) {
-    setServerError(
-      error.response?.data?.message ||
-        "Registration failed. Please try again."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+    // Image is valid
+    setSelectedImage(file);
+    setPreviewImage(URL.createObjectURL(file));
+  };
 
+  const onSubmit = async (data: RegisterForm) => {
+    if (!selectedImage) {
+      setImageError("Profile image is required.");
+      return;
+    }
 
+    try {
+      setLoading(true);
+      setServerError("");
+      setImageError("");
+      setSuccessMessage("");
+
+      const formData = new FormData();
+
+      formData.append("firstName", data.firstName);
+      formData.append("lastName", data.lastName);
+      formData.append("email", data.email);
+      formData.append("password", data.password);
+      formData.append("role", data.role);
+      formData.append("image", selectedImage);
+
+      const response = await api.post(
+        "/users/register",
+        formData
+      );
+
+      setSuccessMessage(
+        response.data.message || "Registration successful!"
+      );
+
+      setTimeout(() => {
+        router.push("/login");
+      }, 1500);
+    } catch (error: any) {
+      setServerError(
+        error.response?.data?.message ||
+          "Registration failed. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#F7FAF8] px-4 py-10">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-md">
-        <h1 className="mb-2 text-center text-3xl font-semibold text-[#1F2A24]">
-          Create Account
-        </h1>
-
-        <p className="mb-8 text-center text-sm text-gray-500">
-          Join Gather and discover amazing events
-        </p>
+    <main className="flex min-h-screen items-center justify-center bg-[#FFECD1] px-4 py-10">
+      <div className="w-full max-w-lg rounded-2xl border border-[#F5D8B3] bg-white p-8 shadow-md">
+        
+        {/* Brand Header */}
+        <div className="mb-6 text-center">
+          <Link href="/" className="inline-block mb-2">
+            <span className="text-2xl font-bold tracking-tight text-[#3E000C]">
+              Gather<span className="text-[#3E000C]">.</span>
+            </span>
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight text-[#3E000C]">
+            Create Account
+          </h1>
+          <p className="mt-1 text-sm text-stone-600">
+            Join Gather and discover amazing events
+          </p>
+        </div>
 
         <form
           onSubmit={handleSubmit(onSubmit)}
@@ -166,7 +168,7 @@ const onSubmit = async (data: RegisterForm) => {
         >
           {/* Profile Image */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-semibold text-[#3E000C]">
               Profile Image
             </label>
 
@@ -175,10 +177,10 @@ const onSubmit = async (data: RegisterForm) => {
                 <img
                   src={previewImage}
                   alt="Profile preview"
-                  className="h-24 w-24 rounded-full border border-gray-300 object-cover"
+                  className="h-24 w-24 rounded-full border border-stone-300 object-cover shadow-sm"
                 />
               ) : (
-                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 text-sm text-gray-500">
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-stone-100 text-sm text-stone-500 border border-stone-200">
                   No image
                 </div>
               )}
@@ -188,22 +190,22 @@ const onSubmit = async (data: RegisterForm) => {
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={handleImageChange}
-              className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-700"
+              className="w-full rounded-xl border border-stone-300 bg-stone-50/50 p-3 text-sm text-stone-700 outline-none file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#3E000C] file:text-white hover:file:bg-[#2B0008]"
             />
             {imageError && (
-            <p className="mt-1 text-sm text-red-500">
-              {imageError}
-            </p>
-          )}
+              <p className="mt-1 text-xs text-red-600 font-medium">
+                {imageError}
+              </p>
+            )}
 
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-stone-500">
               JPG, PNG, or WEBP. Maximum size: 2 MB.
             </p>
           </div>
 
           {/* First Name */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-semibold text-[#3E000C]">
               First Name
             </label>
 
@@ -211,11 +213,13 @@ const onSubmit = async (data: RegisterForm) => {
               type="text"
               placeholder="Enter your first name"
               {...register("firstName")}
-              className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 outline-none focus:border-[#2F6B4F]"
+              className={`w-full rounded-xl border bg-stone-50/50 px-4 py-3 text-stone-900 outline-none transition-all focus:bg-white focus:border-[#3E000C] focus:ring-4 focus:ring-[#3E000C]/15 ${
+                errors.firstName ? "border-red-500" : "border-stone-300"
+              }`}
             />
 
             {errors.firstName && (
-              <p className="mt-1 text-sm text-red-500">
+              <p className="mt-1 text-xs text-red-600 font-medium">
                 {errors.firstName.message}
               </p>
             )}
@@ -223,7 +227,7 @@ const onSubmit = async (data: RegisterForm) => {
 
           {/* Last Name */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-semibold text-[#3E000C]">
               Last Name
             </label>
 
@@ -231,11 +235,13 @@ const onSubmit = async (data: RegisterForm) => {
               type="text"
               placeholder="Enter your last name"
               {...register("lastName")}
-              className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 outline-none focus:border-[#2F6B4F]"
+              className={`w-full rounded-xl border bg-stone-50/50 px-4 py-3 text-stone-900 outline-none transition-all focus:bg-white focus:border-[#3E000C] focus:ring-4 focus:ring-[#3E000C]/15 ${
+                errors.lastName ? "border-red-500" : "border-stone-300"
+              }`}
             />
 
             {errors.lastName && (
-              <p className="mt-1 text-sm text-red-500">
+              <p className="mt-1 text-xs text-red-600 font-medium">
                 {errors.lastName.message}
               </p>
             )}
@@ -243,7 +249,7 @@ const onSubmit = async (data: RegisterForm) => {
 
           {/* Email */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-semibold text-[#3E000C]">
               Email Address
             </label>
 
@@ -251,11 +257,13 @@ const onSubmit = async (data: RegisterForm) => {
               type="email"
               placeholder="Enter your email"
               {...register("email")}
-              className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 outline-none focus:border-[#2F6B4F]"
+              className={`w-full rounded-xl border bg-stone-50/50 px-4 py-3 text-stone-900 outline-none transition-all focus:bg-white focus:border-[#3E000C] focus:ring-4 focus:ring-[#3E000C]/15 ${
+                errors.email ? "border-red-500" : "border-stone-300"
+              }`}
             />
 
             {errors.email && (
-              <p className="mt-1 text-sm text-red-500">
+              <p className="mt-1 text-xs text-red-600 font-medium">
                 {errors.email.message}
               </p>
             )}
@@ -263,7 +271,7 @@ const onSubmit = async (data: RegisterForm) => {
 
           {/* Password */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-semibold text-[#3E000C]">
               Password
             </label>
 
@@ -271,11 +279,13 @@ const onSubmit = async (data: RegisterForm) => {
               type="password"
               placeholder="Create a password"
               {...register("password")}
-              className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 outline-none focus:border-[#2F6B4F]"
+              className={`w-full rounded-xl border bg-stone-50/50 px-4 py-3 text-stone-900 outline-none transition-all focus:bg-white focus:border-[#3E000C] focus:ring-4 focus:ring-[#3E000C]/15 ${
+                errors.password ? "border-red-500" : "border-stone-300"
+              }`}
             />
 
             {errors.password && (
-              <p className="mt-1 text-sm text-red-500">
+              <p className="mt-1 text-xs text-red-600 font-medium">
                 {errors.password.message}
               </p>
             )}
@@ -283,7 +293,7 @@ const onSubmit = async (data: RegisterForm) => {
 
           {/* Confirm Password */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-semibold text-[#3E000C]">
               Confirm Password
             </label>
 
@@ -291,11 +301,13 @@ const onSubmit = async (data: RegisterForm) => {
               type="password"
               placeholder="Confirm your password"
               {...register("confirmPassword")}
-              className="w-full rounded-lg border border-gray-300 p-3 text-gray-900 outline-none focus:border-[#2F6B4F]"
+              className={`w-full rounded-xl border bg-stone-50/50 px-4 py-3 text-stone-900 outline-none transition-all focus:bg-white focus:border-[#3E000C] focus:ring-4 focus:ring-[#3E000C]/15 ${
+                errors.confirmPassword ? "border-red-500" : "border-stone-300"
+              }`}
             />
 
             {errors.confirmPassword && (
-              <p className="mt-1 text-sm text-red-500">
+              <p className="mt-1 text-xs text-red-600 font-medium">
                 {errors.confirmPassword.message}
               </p>
             )}
@@ -303,20 +315,20 @@ const onSubmit = async (data: RegisterForm) => {
 
           {/* Role */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-semibold text-[#3E000C]">
               Register As
             </label>
 
             <select
               {...register("role")}
-              className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 outline-none focus:border-[#2F6B4F]"
+              className="w-full rounded-xl border border-stone-300 bg-stone-50/50 px-4 py-3 text-stone-900 outline-none transition-all focus:bg-white focus:border-[#3E000C] focus:ring-4 focus:ring-[#3E000C]/15"
             >
               <option value="user">Event Attendee</option>
               <option value="organizer">Event Organizer</option>
             </select>
 
             {errors.role && (
-              <p className="mt-1 text-sm text-red-500">
+              <p className="mt-1 text-xs text-red-600 font-medium">
                 {errors.role.message}
               </p>
             )}
@@ -324,14 +336,14 @@ const onSubmit = async (data: RegisterForm) => {
 
           {/* Server Error */}
           {serverError && (
-            <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+            <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
               {serverError}
             </p>
           )}
 
           {/* Success Message */}
           {successMessage && (
-            <p className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
+            <p className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
               {successMessage}
             </p>
           )}
@@ -340,17 +352,17 @@ const onSubmit = async (data: RegisterForm) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-[#2F6B4F] p-3 font-medium text-white transition hover:bg-[#24553E] disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl bg-[#3E000C] px-4 py-3 font-semibold text-white transition-all hover:bg-[#2B0008] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
           >
             {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-stone-600">
           Already have an account?{" "}
           <Link
             href="/login"
-            className="font-medium text-[#2F6B4F] hover:underline"
+            className="font-semibold text-[#3E000C] hover:underline"
           >
             Sign In
           </Link>

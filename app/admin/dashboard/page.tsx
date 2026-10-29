@@ -10,7 +10,9 @@ totalUsers: number;
 totalOrganizers: number;
 totalEvents: number;
 totalBookings: number;
+pendingReports: number;
 }
+
 
 interface OrganizerNotification {
   _id: string;
@@ -33,7 +35,9 @@ totalUsers: 0,
 totalOrganizers: 0,
 totalEvents: 0,
 totalBookings: 0,
+pendingReports: 0,
 });
+
 
 const [loading, setLoading] = useState(true);
 const [error, setError] = useState("");
@@ -41,6 +45,61 @@ const [notifications, setNotifications] = useState<OrganizerNotification[]>([]);
 const [notificationError, setNotificationError] = useState("");
 const [actionLoading, setActionLoading] = useState<string | null>(null);
 const [actionMessage, setActionMessage] = useState("");
+const [announcement, setAnnouncement] = useState("");
+const [announcementMessage, setAnnouncementMessage] = useState("");
+const [announcementLoading, setAnnouncementLoading] = useState(false);
+
+
+//for announcement
+const handleSendAnnouncement = async (
+  event: React.FormEvent<HTMLFormElement>
+) => {
+  event.preventDefault();
+
+  const message = announcement.trim();
+
+  if (!message) {
+    setAnnouncementMessage("Please enter an announcement.");
+    return;
+  }
+
+  try {
+    setAnnouncementLoading(true);
+    setAnnouncementMessage("");
+
+    const response = await api.post(
+      "/notifications/announcement",
+      { message },
+      { withCredentials: true }
+    );
+
+    setAnnouncementMessage(
+      `${response.data.message || "Announcement sent successfully"}${
+        response.data.recipientCount !== undefined
+          ? ` (${response.data.recipientCount} users notified)`
+          : ""
+      }`
+    );
+
+    setAnnouncement("");
+  } catch (err: unknown) {
+    if (typeof err === "object" && err !== null && "response" in err) {
+      const apiError = err as {
+        response?: { data?: { message?: string } };
+      };
+
+      setAnnouncementMessage(
+        apiError.response?.data?.message ||
+          "Failed to send announcement."
+      );
+    } else {
+      setAnnouncementMessage("Unable to connect to the backend.");
+    }
+  } finally {
+    setAnnouncementLoading(false);
+  }
+};
+
 
 const handleOrganizerAction = async (
 organizerId: string,
@@ -187,6 +246,12 @@ title: "Total Bookings",
 value: stats.totalBookings,
 href: "/admin/bookings",
 },
+{
+title: "Pending Reports",
+value: stats.pendingReports,
+href: "/admin/reports",
+},
+
 ];
 
 if (loading) {
@@ -234,111 +299,160 @@ return (
       ))}
     </div>
 
-<div className="mt-10 rounded-xl bg-white p-6 shadow-sm">
-  <div className="flex flex-wrap items-center justify-between gap-3">
-    <h2 className="text-xl font-semibold text-gray-900">
-      Organizer Verification Notifications
-    </h2>
+    {/* <div className="mt-10 rounded-xl bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold text-gray-900">
+          Organizer Verification Notifications
+        </h2>
 
-    <span className="rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800">
-      {
-        notifications.filter(
-          (notification) =>
-            notification.organizer?.verificationStatus === "pending"
-        ).length
-      } pending
-    </span>
-  </div>
+        <span className="rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800">
+          {
+            notifications.filter(
+              (notification) =>
+                notification.organizer?.verificationStatus === "pending"
+            ).length
+          } pending
+        </span>
+      </div>
 
-    {actionMessage && (
-      <p className="mt-4 text-sm text-green-700">
-        {actionMessage}
-      </p>
-    )}
-
-  {notificationError ? (
-    <p className="mt-4 text-sm text-red-600">{notificationError}</p>
-  ) : notifications.length === 0 ? (
-    <p className="mt-4 text-gray-500">
-      No organizer registration notifications yet.
-    </p>
-  ) : (
-    <div className="mt-5 space-y-4">
-      {notifications.map((notification) => (
-        <div
-          key={notification._id}
-          className="rounded-lg border border-gray-200 p-4"
-        >
-          <div className="flex flex-col justify-between gap-3 sm:flex-row">
-            <div>
-              <h3 className="font-semibold text-gray-900">
-                {notification.organizer
-                  ? `${notification.organizer.firstName} ${notification.organizer.lastName}`
-                  : "Organizer information unavailable"}
-              </h3>
-
-              <p className="mt-1 text-sm text-gray-600">
-                {notification.organizer?.email || "No email available"}
-              </p>
-
-              <p className="mt-2 text-sm text-gray-600">
-                {notification.message}
-              </p>
-
-              <p className="mt-2 text-xs text-gray-400">
-                {new Date(notification.createdAt).toLocaleString()}
-              </p>
-            </div>
-
-        <div className="flex flex-col items-start gap-3">
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              notification.organizer?.verificationStatus === "approved"
-                ? "bg-green-100 text-green-800"
-                : notification.organizer?.verificationStatus === "rejected"
-                ? "bg-red-100 text-red-800"
-                : "bg-yellow-100 text-yellow-800"
-            }`}
-          >
-            {notification.organizer?.verificationStatus || "unknown"}
-          </span>
-
-        {notification.organizer?.verificationStatus === "pending" && ( <div className="flex flex-wrap gap-2">
-        <button
-        type="button"
-        onClick={() =>
-        handleOrganizerAction(notification.organizer._id, "approve")
-        }
-        disabled={actionLoading === notification.organizer._id}
-        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-        {actionLoading === notification.organizer._id
-        ? "Processing..."
-        : "Approve"} </button>
-
-
-          <button
-            type="button"
-            onClick={() =>
-              handleOrganizerAction(notification.organizer._id, "reject")
-            }
-            disabled={actionLoading === notification.organizer._id}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Reject
-          </button>
-        </div>
-
+        {actionMessage && (
+          <p className="mt-4 text-sm text-green-700">
+            {actionMessage}
+          </p>
         )}
 
+      {notificationError ? (
+        <p className="mt-4 text-sm text-red-600">{notificationError}</p>
+      ) : notifications.length === 0 ? (
+        <p className="mt-4 text-gray-500">
+          No organizer registration notifications yet.
+        </p>
+      ) : (
+        <div className="mt-5 space-y-4">
+          {notifications.map((notification) => (
+            <div
+              key={notification._id}
+              className="rounded-lg border border-gray-200 p-4"
+            >
+              <div className="flex flex-col justify-between gap-3 sm:flex-row">
+                <div>
+                  <h3 className="font-semibold text-gray-900">
+                    {notification.organizer
+                      ? `${notification.organizer.firstName} ${notification.organizer.lastName}`
+                      : "Organizer information unavailable"}
+                  </h3>
+
+                  <p className="mt-1 text-sm text-gray-600">
+                    {notification.organizer?.email || "No email available"}
+                  </p>
+
+                  <p className="mt-2 text-sm text-gray-600">
+                    {notification.message}
+                  </p>
+
+                  <p className="mt-2 text-xs text-gray-400">
+                    {new Date(notification.createdAt).toLocaleString()}
+                  </p>
+                </div>
+
+            <div className="flex flex-col items-start gap-3">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  notification.organizer?.verificationStatus === "approved"
+                    ? "bg-green-100 text-green-800"
+                    : notification.organizer?.verificationStatus === "rejected"
+                    ? "bg-red-100 text-red-800"
+                    : "bg-yellow-100 text-yellow-800"
+                }`}
+              >
+                {notification.organizer?.verificationStatus || "unknown"}
+              </span>
+
+            {notification.organizer?.verificationStatus === "pending" && ( <div className="flex flex-wrap gap-2">
+            <button
+            type="button"
+            onClick={() =>
+            handleOrganizerAction(notification.organizer._id, "approve")
+            }
+            disabled={actionLoading === notification.organizer._id}
+            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+            {actionLoading === notification.organizer._id
+            ? "Processing..."
+            : "Approve"} </button>
+
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleOrganizerAction(notification.organizer._id, "reject")
+                }
+                disabled={actionLoading === notification.organizer._id}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Reject
+              </button>
+            </div>
+
+            )}
+
+            </div>
+
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div> */}
+
+    <section className="mt-8 rounded-xl bg-white p-6 shadow-sm">
+      <h2 className="text-xl font-bold text-gray-900">
+        Send Important Announcement
+      </h2>
+
+      <p className="mt-2 text-sm text-gray-600">
+        Send an in-app notification to all users.
+      </p>
+
+      <form onSubmit={handleSendAnnouncement} className="mt-5 space-y-4">
+        <div>
+          <label
+            htmlFor="announcement"
+            className="mb-2 block font-medium text-gray-700"
+          >
+            Announcement Message
+          </label>
+
+          <textarea
+            id="announcement"
+            value={announcement}
+            onChange={(event) => setAnnouncement(event.target.value)}
+            placeholder="Enter your announcement here..."
+            rows={4}
+            maxLength={1000}
+            required
+            className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
+          />
         </div>
 
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
+        {announcementMessage && (
+          <p
+            role="status"
+            className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700"
+          >
+            {announcementMessage}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={announcementLoading}
+          className="rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {announcementLoading ? "Sending..." : "Send Announcement"}
+        </button>
+      </form>
+    </section>
 
 
 
@@ -366,6 +480,13 @@ return (
         >
           Manage Bookings
         </Link>
+        <Link
+          href="/admin/reports"
+          className="rounded-lg bg-gray-900 px-5 py-3 text-white hover:bg-gray-700"
+        >
+          Manage Reports
+        </Link>
+
       </div>
     </div>
   </div>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
@@ -15,8 +15,21 @@ export async function GET() {
 
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
+    if (!backendUrl) {
+      return NextResponse.json(
+        { message: "Backend URL is not configured." },
+        { status: 500 }
+      );
+    }
+
+    // Read search parameters from the frontend request
+    const { searchParams } = new URL(request.url);
+
+    // Forward the parameters to the backend
+    const queryString = searchParams.toString();
+
     const response = await fetch(
-      `${backendUrl}/events/getevent`,
+      `${backendUrl}/events/getevent${queryString ? `?${queryString}` : ""}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

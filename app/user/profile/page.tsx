@@ -150,65 +150,70 @@ export default function MyProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-600">Loading your profile...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#FFECD1] text-[#3E000C] font-semibold">
+        <p>Loading your profile...</p>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4">
-        <p className="text-red-600">
-          {error || "Unable to load your profile."}
-        </p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#FFECD1] px-4 text-center">
+        <div className="w-full max-w-md rounded-3xl border border-[#F5D8B3] bg-white p-8 shadow-sm">
+          <p className="text-sm font-semibold text-red-600 mb-4">
+            {error || "Unable to load your profile."}
+          </p>
 
-        <Link
-          href="/login"
-          className="rounded-lg bg-amber-800 px-5 py-2 text-white hover:bg-amber-900"
-        >
-          Go to Login
-        </Link>
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center rounded-xl bg-[#3E000C] px-5 py-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#2B0008]"
+          >
+            Go to Login
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-  <div className="min-h-screen bg-gray-50 px-4 py-12">
-  <div className="mx-auto max-w-xl">
-    <Link
-      href="/user/dashboard"
-      className="mb-6 inline-block text-sm text-gray-600 hover:text-amber-800"
-    >
-      ← Back to Dashboard
-    </Link>
+    <div className="min-h-screen bg-[#FFECD1] px-4 py-8 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
+      <div className="mx-auto max-w-xl">
 
-        <div className="overflow-hidden rounded-2xl bg-white shadow-lg">
+        <div className="mt-8 mb-6">
+          <Link
+            href="/user/dashboard"
+            className="inline-flex items-center gap-2 text-xs font-bold tracking-wider uppercase text-[#3E000C] hover:opacity-70 transition-opacity"
+          >
+            ← Back to Dashboard
+          </Link>
+        </div>
+
+        <div className="overflow-hidden rounded-3xl border border-[#F5D8B3] bg-white shadow-sm">
           {/* Profile Header */}
-          <div className="bg-amber-800 px-6 py-8 text-center text-white">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white text-3xl font-bold text-amber-800">
+          <div className="bg-[#3E000C] px-6 py-8 text-center text-[#FFECD1]">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 text-3xl font-black text-white shadow-inner backdrop-blur-md">
               {profile.firstName?.charAt(0).toUpperCase()}
             </div>
 
-            <h1 className="mt-4 text-2xl font-bold">
+            <h1 className="mt-4 text-2xl font-black tracking-tight text-white">
               My Profile
             </h1>
 
-            <p className="mt-1 text-amber-100">
-              Manage your account information
+            <p className="mt-1 text-xs font-medium text-stone-300">
+              Manage your account information and preferences
             </p>
           </div>
 
           {/* Profile Details */}
-          <div className="p-6">
+          <div className="p-8">
             {error && (
-              <p className="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-700">
+              <p className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 shadow-sm">
                 {error}
               </p>
             )}
 
             {message && (
-              <p className="mb-4 rounded-lg bg-green-100 p-3 text-sm text-green-700">
+              <p className="mb-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-medium text-green-800 shadow-sm">
                 {message}
               </p>
             )}
@@ -221,7 +226,7 @@ export default function MyProfilePage() {
                 <div>
                   <label
                     htmlFor="firstName"
-                    className="mb-1 block text-sm font-medium text-gray-700"
+                    className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#3E000C]"
                   >
                     First Name
                   </label>
@@ -234,14 +239,14 @@ export default function MyProfilePage() {
                       setFirstName(event.target.value)
                     }
                     required
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-amber-800 focus:ring-1 focus:ring-amber-800"
+                    className="w-full rounded-xl border border-stone-300 bg-stone-50/50 px-4 py-3 text-sm text-stone-900 outline-none transition-all focus:bg-white focus:border-[#3E000C]"
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="lastName"
-                    className="mb-1 block text-sm font-medium text-gray-700"
+                    className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#3E000C]"
                   >
                     Last Name
                   </label>
@@ -254,14 +259,14 @@ export default function MyProfilePage() {
                       setLastName(event.target.value)
                     }
                     required
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-amber-800 focus:ring-1 focus:ring-amber-800"
+                    className="w-full rounded-xl border border-stone-300 bg-stone-50/50 px-4 py-3 text-sm text-stone-900 outline-none transition-all focus:bg-white focus:border-[#3E000C]"
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="email"
-                    className="mb-1 block text-sm font-medium text-gray-700"
+                    className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#3E000C]"
                   >
                     Email Address
                   </label>
@@ -274,7 +279,7 @@ export default function MyProfilePage() {
                       setEmail(event.target.value)
                     }
                     required
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-amber-800 focus:ring-1 focus:ring-amber-800"
+                    className="w-full rounded-xl border border-stone-300 bg-stone-50/50 px-4 py-3 text-sm text-stone-900 outline-none transition-all focus:bg-white focus:border-[#3E000C]"
                   />
                 </div>
 
@@ -282,7 +287,7 @@ export default function MyProfilePage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="rounded-lg bg-amber-800 px-5 py-3 font-medium text-white hover:bg-amber-900 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex-1 rounded-xl bg-[#3E000C] px-5 py-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {saving ? "Saving..." : "Save Changes"}
                   </button>
@@ -298,40 +303,42 @@ export default function MyProfilePage() {
                       setError("");
                       setMessage("");
                     }}
-                    className="rounded-lg border border-gray-300 px-5 py-3 font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+                    className="rounded-xl border border-stone-300 bg-white px-5 py-3 text-xs font-bold text-stone-700 shadow-sm transition-all hover:bg-stone-50 disabled:opacity-60"
                   >
                     Cancel
                   </button>
                 </div>
               </form>
             ) : (
-              <div className="space-y-5">
-                <div>
-                  <p className="text-sm text-gray-500">First Name</p>
-                  <p className="mt-1 font-medium text-gray-900">
-                    {profile.firstName}
-                  </p>
+              <div className="space-y-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-stone-50 p-4 border border-stone-200">
+                    <span className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-1">First Name</span>
+                    <span className="font-semibold text-stone-900">
+                      {profile.firstName}
+                    </span>
+                  </div>
+
+                  <div className="rounded-2xl bg-stone-50 p-4 border border-stone-200">
+                    <span className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-1">Last Name</span>
+                    <span className="font-semibold text-stone-900">
+                      {profile.lastName}
+                    </span>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-sm text-gray-500">Last Name</p>
-                  <p className="mt-1 font-medium text-gray-900">
-                    {profile.lastName}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-500">Email Address</p>
-                  <p className="mt-1 break-words font-medium text-gray-900">
+                <div className="rounded-2xl bg-stone-50 p-4 border border-stone-200">
+                  <span className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-1">Email Address</span>
+                  <span className="font-semibold text-stone-900 break-all">
                     {profile.email}
-                  </p>
+                  </span>
                 </div>
 
-                <div>
-                  <p className="text-sm text-gray-500">Account Role</p>
-                  <p className="mt-1 font-medium capitalize text-gray-900">
+                <div className="rounded-2xl bg-stone-50 p-4 border border-stone-200">
+                  <span className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-1">Account Role</span>
+                  <span className="font-semibold text-stone-900 capitalize">
                     {profile.role}
-                  </p>
+                  </span>
                 </div>
 
                 <button
@@ -341,19 +348,21 @@ export default function MyProfilePage() {
                     setError("");
                     setMessage("");
                   }}
-                  className="w-full rounded-lg bg-amber-800 px-5 py-3 font-medium text-white hover:bg-amber-900"
+                  className="w-full rounded-xl bg-[#3E000C] px-5 py-3.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#2B0008]"
                 >
                   Edit Profile
                 </button>
               </div>
             )}
 
-            <Link
-              href="/user/bookings"
-              className="mt-4 block rounded-lg border border-amber-800 px-5 py-3 text-center font-medium text-amber-800 hover:bg-amber-50"
-            >
-              My Bookings
-            </Link>
+            <div className="mt-6 pt-6 border-t border-stone-100">
+              <Link
+                href="/user/bookings"
+                className="flex w-full items-center justify-center rounded-xl border border-[#3E000C] px-5 py-3.5 text-xs font-bold text-[#3E000C] transition-all hover:bg-[#3E000C]/5"
+              >
+                View My Bookings
+              </Link>
+            </div>
           </div>
         </div>
       </div>

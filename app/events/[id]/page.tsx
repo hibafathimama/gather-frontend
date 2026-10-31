@@ -134,13 +134,31 @@ function EventDetailsContent() {
     );
   }
 
-  const imageUrl = event.image
-    ? event.image.startsWith("http")
-      ? event.image
-      : `${process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/api\/?$/, "")}${
-          event.image.startsWith("/") ? "" : "/"
-        }${event.image}`
-    : "";
+const getImageUrl = (image?: string | null) => {
+  if (!image) return "";
+
+  const productionBackend =
+    "https://gather-backend-si86.onrender.com";
+
+  // Replace localhost URLs saved in the database.
+  if (/^https?:\/\/(localhost|127\.0\.0\.1):5000\//i.test(image)) {
+    return image.replace(
+      /^https?:\/\/(localhost|127\.0\.0\.1):5000/i,
+      productionBackend
+    );
+  }
+
+  // Keep other complete image URLs unchanged.
+  if (/^https?:\/\//i.test(image)) {
+    return image;
+  }
+
+  // Build the URL for relative image paths.
+  return `${productionBackend}/${image.replace(/^\/+/, "")}`;
+};
+
+const imageUrl = getImageUrl(event.image);
+
 
   const showImage = imageUrl && !imageError;
 
@@ -196,8 +214,8 @@ function EventDetailsContent() {
         <article className="overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm">
           {/* Image */}
           {showImage ? (
-            <div className="relative h-64 w-full bg-stone-100 sm:h-72">
-              <img
+                <div className="relative h-80 w-full bg-stone-100 sm:h-96">
+                <img
                 src={imageUrl}
                 alt={event.eventName}
                 className="h-full w-full object-cover"

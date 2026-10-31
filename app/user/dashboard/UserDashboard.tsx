@@ -212,21 +212,28 @@ export default function UserDashboard() {
   };
 
   // Image path helper.
-  const getImageUrl = (image?: string | null) => {
-    if (!image) return "";
+const getImageUrl = (image?: string | null) => {
+  if (!image) return "";
 
-    if (image.startsWith("http://") || image.startsWith("https://")) {
-      return image;
-    }
+  const productionBackend = "https://gather-backend-si86.onrender.com";
 
-    const backendUrl = (
-      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api"
-    ).replace(/\/api\/?$/, "");
+  // Images saved using localhost should use Render instead.
+  if (/^https?:\/\/(localhost|127\.0\.0\.1):5000\//i.test(image)) {
+    return image.replace(
+      /^https?:\/\/(localhost|127\.0\.0\.1):5000/i,
+      productionBackend
+    );
+  }
 
-    const imagePath = image.startsWith("/") ? image : `/${image}`;
+  // Keep other complete image URLs unchanged.
+  if (/^https?:\/\//i.test(image)) {
+    return image;
+  }
 
-    return `${backendUrl}${imagePath}`;
-  };
+  // Relative image paths are served from Render.
+  return `${productionBackend}/${image.replace(/^\/+/, "")}`;
+};
+
 
   const runSearch = () => {
     setPage(1);
@@ -446,116 +453,118 @@ export default function UserDashboard() {
                 const isUpdating = updatingFavoriteId === event._id;
 
                 return (
-                  <article
-                    key={event._id}
-                    className="flex flex-col overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm transition-shadow hover:shadow-md"
+              <article
+                key={event._id}
+                className="group flex flex-col overflow-hidden rounded-2xl border border-[#F5D8B3] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+              >
+                {/* Larger event image */}
+                <div className="relative h-64 w-full overflow-hidden bg-stone-200 sm:h-72">
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={event.eventName}
+                      loading="lazy"
+                      className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                      onError={(e) => {
+                        console.error("Image failed:", imageUrl);
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-[#F5D8B3] text-sm text-[#3E000C]">
+                      No image available
+                    </div>
+                  )}
+
+                  {/* Dark overlay for better visual appearance */}
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+
+                  {/* Event category */}
+                  {event.category && (
+                    <span className="absolute left-3 top-3 rounded-full bg-[#3E000C] px-3 py-1.5 text-xs font-semibold text-[#FFECD1] shadow">
+                      {event.category}
+                    </span>
+                  )}
+
+                  {/* Ticket price */}
+                  <span className="absolute right-3 top-3 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-[#3E000C] shadow">
+                    {event.ticketPrice === undefined || event.ticketPrice === 0
+                      ? "Free"
+                      : `₹${event.ticketPrice}`}
+                  </span>
+
+                  {/* Wishlist button */}
+                  <button
+                    type="button"
+                    onClick={() => handleFavorite(event._id)}
+                    disabled={isUpdating}
+                    aria-label={
+                      isFavorite ? "Remove from wishlist" : "Add to wishlist"
+                    }
+                    aria-pressed={isFavorite}
+                    title={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
+                    className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg transition hover:scale-110 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <div className="relative h-48 w-full overflow-hidden bg-stone-100">
-                      {imageUrl ? (
-                        <img
-                          src={imageUrl}
-                          alt={event.eventName}
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            console.error("Image failed:", imageUrl);
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-sm text-stone-400">
-                          No image available
-                        </div>
-                      )}
+                    <Heart
+                      className={`h-5 w-5 ${
+                        isFavorite
+                          ? "fill-red-600 text-red-600"
+                          : "text-stone-600"
+                      }`}
+                    />
+                  </button>
+                </div>
 
-                      {event.category && (
-                        <span className="absolute left-3 top-3 rounded-md bg-[#3E000C] px-2.5 py-1 text-xs font-medium text-[#FFECD1]">
-                          {event.category}
-                        </span>
-                      )}
+                {/* Event details */}
+                <div className="flex flex-1 flex-col gap-5 p-5 sm:p-6">
+                  <div className="space-y-3">
+                    <h3
+                      className="line-clamp-2 min-h-14 text-xl font-bold leading-7 text-[#3E000C]"
+                      title={event.eventName}
+                    >
+                      {event.eventName}
+                    </h3>
 
-                      <span className="absolute right-3 top-3 rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-[#3E000C] shadow-sm">
-                        {event.ticketPrice === undefined ||
-                        event.ticketPrice === 0
-                          ? "Free"
-                          : `₹${event.ticketPrice}`}
+                    <div className="flex flex-col gap-2.5 text-sm text-stone-600">
+                      <span className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 shrink-0 text-[#3E000C]" />
+                        {new Date(event.date).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
                       </span>
 
-                      {/* Wishlist button */}
-                      <button
-                        type="button"
-                        onClick={() => handleFavorite(event._id)}
-                        disabled={isUpdating}
-                        aria-label={
-                          isFavorite
-                            ? "Remove from wishlist"
-                            : "Add to wishlist"
-                        }
-                        aria-pressed={isFavorite}
-                        title={
-                          isFavorite
-                            ? "Remove from wishlist"
-                            : "Add to wishlist"
-                        }
-                        className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-md transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <Heart
-                          className={`h-5 w-5 ${
-                            isFavorite
-                              ? "fill-red-600 text-red-600"
-                              : "text-stone-500"
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    <div className="flex flex-1 flex-col gap-4 p-5">
-                      <div className="space-y-2">
-                        <h3
-                          className="line-clamp-1 text-lg font-semibold text-[#3E000C]"
-                          title={event.eventName}
-                        >
-                          {event.eventName}
-                        </h3>
-
-                        <div className="flex flex-col gap-1 text-sm text-stone-600">
-                          <span className="flex items-center gap-2">
-                            <CalendarDays className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
-                            {new Date(event.date).toLocaleDateString("en-IN", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
+                      {event.venue && (
+                        <span className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 shrink-0 text-[#3E000C]" />
+                          <span className="truncate" title={event.venue}>
+                            {event.venue}
                           </span>
-
-                          {event.venue && (
-                            <span className="flex items-center gap-2">
-                              <MapPin className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
-                              <span className="truncate" title={event.venue}>
-                                {event.venue}
-                              </span>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="mt-auto grid grid-cols-2 gap-2">
-                        <Link
-                          href={`/events/${event._id}`}
-                          className="flex items-center justify-center rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm font-semibold text-stone-700 transition hover:border-[#3E000C] hover:text-[#3E000C]"
-                        >
-                          View details
-                        </Link>
-
-                        <Link
-                          href={`/events/${event._id}/book`}
-                          className="flex items-center justify-center rounded-lg bg-[#3E000C] px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
-                        >
-                          Book ticket
-                        </Link>
-                      </div>
+                        </span>
+                      )}
                     </div>
-                  </article>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="mt-auto grid grid-cols-2 gap-3 border-t border-stone-100 pt-4">
+                    <Link
+                      href={`/events/${event._id}`}
+                      className="flex min-h-11 items-center justify-center rounded-lg border border-[#3E000C] px-3 py-2.5 text-center text-sm font-semibold text-[#3E000C] transition hover:bg-[#3E000C]/5"
+                    >
+                      View details
+                    </Link>
+
+                    <Link
+                      href={`/events/${event._id}/book`}
+                      className="flex min-h-11 items-center justify-center rounded-lg bg-[#3E000C] px-3 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-[#2B0008]"
+                    >
+                      Book ticket
+                    </Link>
+                  </div>
+                </div>
+              </article>
+
                 );
               })}
             </div>

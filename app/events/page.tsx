@@ -30,90 +30,40 @@ export default function EventsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    const getAllEvents = async () => {
-      try {
-        setLoading(true);
-        setError("");
+useEffect(() => {
+  const getAllEvents = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-        const token = localStorage.getItem("token");
+      const response = await api.get("/events/getevent", {
+        params: {
+          page,
+          limit: 10,
+        },
+      });
 
-        if (!token) {
-          setError("Please log in to view events.");
-          setEvents([]);
-          return;
-        }
+      const result = response.data;
 
-        const headers = {
-          Authorization: `Bearer ${token}`,
-        };
-
-        const response = await api.get("/events/getevent", {
-          params: {
-            page,
-            limit: 10,
-          },
-          headers,
-          withCredentials: true,
-        });
-
-        const result = response.data;
-
-        if (result.status === false) {
-          throw new Error(result.message || "Failed to fetch events.");
-        }
-
-        setEvents(Array.isArray(result.data) ? result.data : []);
-        setTotalPages(result.pagination?.totalPages || 1);
-
-        // Fetch the logged-in user's wishlist.
-        const favoritesResponse = await api.get("/favorites", {
-          headers,
-          withCredentials: true,
-        });
-
-        const favorites = Array.isArray(favoritesResponse.data.data)
-          ? favoritesResponse.data.data
-          : [];
-
-        const ids = favorites
-          .map((favorite: { event?: string | { _id: string } }) =>
-            typeof favorite.event === "string"
-              ? favorite.event
-              : favorite.event?._id
-          )
-          .filter((id: string | undefined): id is string => Boolean(id));
-
-        setFavoriteIds(ids);
-      } catch (err: unknown) {
-        console.error("Error fetching events or wishlist:", err);
-
-        if (typeof err === "object" && err !== null && "response" in err) {
-          const apiError = err as {
-            response?: {
-              data?: { message?: string };
-              status?: number;
-            };
-          };
-
-          setError(
-            apiError.response?.data?.message ||
-              `Failed to fetch data. Status: ${
-                apiError.response?.status || "unknown"
-              }`
-          );
-        } else if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("Something went wrong.");
-        }
-      } finally {
-        setLoading(false);
+      if (result.status === false) {
+        throw new Error(result.message || "Failed to fetch events.");
       }
-    };
 
-    getAllEvents();
-  }, [page]);
+      setEvents(result.data || []);
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong while fetching events."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  getAllEvents();
+}, [page]);
+
 
   const handleFavorite = async (eventId: string) => {
     const token = localStorage.getItem("token");
@@ -177,21 +127,33 @@ export default function EventsPage() {
     }
   };
 
-  const getImageUrl = (image?: string | null) => {
-    if (!image) return "";
 
-    if (image.startsWith("http://") || image.startsWith("https://")) {
-      return image;
-    }
+const getImageUrl = (image?: string | null) => {
+  if (!image) return "";
 
-    const backendUrl = (
-      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api"
-    ).replace(/\/api\/?$/, "");
+  const backendUrl =
+    process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/api\/?$/, "") ||
+    "http://localhost:5000";
 
-    const imagePath = image.startsWith("/") ? image : `/${image}`;
+  // Fix image URLs saved with localhost
+  if (/^https?:\/\/(localhost|127\.0\.0\.1):5000\//i.test(image)) {
+    return image.replace(
+      /^https?:\/\/(localhost|127\.0\.0\.1):5000/i,
+      backendUrl
+    );
+  }
 
-    return `${backendUrl}${imagePath}`;
-  };
+  // Preserve other complete URLs
+  if (/^https?:\/\//i.test(image)) {
+    return image;
+  }
+
+  // Convert relative paths to absolute URLs
+  return `${backendUrl}/${image.replace(/^\/+/, "")}`;
+};
+
+
+
 
   return (
     <div className="min-h-screen bg-[#FFECD1] px-4 py-6 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
@@ -279,116 +241,109 @@ export default function EventsPage() {
                 const isUpdating = updatingFavoriteId === event._id;
 
                 return (
-                  <article
-                    key={event._id}
-                    className="flex flex-col overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm transition-shadow hover:shadow-md"
-                  >
-                    <div className="relative h-48 w-full overflow-hidden bg-stone-100">
-                      {imageUrl ? (
-                        <img
-                          src={imageUrl}
-                          alt={event.eventName}
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            console.error(
-                              "Failed to load event image:",
-                              imageUrl
-                            );
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-sm text-stone-500">
-                          No image available
-                        </div>
-                      )}
-
-                      {event.category && (
-                        <span className="absolute left-3 top-3 rounded-md bg-[#3E000C] px-2.5 py-1 text-xs font-medium text-[#FFECD1]">
-                          {event.category}
-                        </span>
-                      )}
-
-                      <span className="absolute right-3 top-3 rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-[#3E000C] shadow-sm">
-                        {event.ticketPrice === undefined ||
-                        event.ticketPrice === 0
-                          ? "Free"
-                          : `₹${event.ticketPrice}`}
-                      </span>
-
-                      {/* Wishlist heart button */}
-                      <button
-                        type="button"
-                        onClick={() => handleFavorite(event._id)}
-                        disabled={isUpdating}
-                        aria-label={
-                          isFavorite
-                            ? "Remove from wishlist"
-                            : "Add to wishlist"
-                        }
-                        aria-pressed={isFavorite}
-                        title={
-                          isFavorite
-                            ? "Remove from wishlist"
-                            : "Add to wishlist"
-                        }
-                        className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-md transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <Heart
-                          className={`h-5 w-5 ${
-                            isFavorite
-                              ? "fill-red-600 text-red-600"
-                              : "text-stone-500"
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    <div className="flex flex-1 flex-col gap-4 p-5">
-                      <div className="space-y-2">
-                        <h3
-                          className="line-clamp-1 text-lg font-semibold text-[#3E000C]"
-                          title={event.eventName}
-                        >
-                          {event.eventName}
-                        </h3>
-
-                        <div className="flex flex-col gap-1 text-sm text-stone-600">
-                          <span className="flex items-center gap-2">
-                            <CalendarDays className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
-                            {new Date(event.date).toLocaleDateString("en-IN", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
-                          </span>
-
-                          {event.time && (
-                            <span className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
-                              {event.time}
-                            </span>
-                          )}
-
-                          {event.venue && (
-                            <span className="flex items-center gap-2">
-                              <MapPin className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
-                              <span className="truncate" title={event.venue}>
-                                {event.venue}
-                              </span>
-                            </span>
-                          )}
-                        </div>
+                <article
+                  key={event._id}
+                  className="flex flex-col overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm transition-shadow hover:shadow-md"
+                >
+                  {/* Larger Event Image */}
+                  <div className="relative h-64 w-full overflow-hidden bg-stone-100 sm:h-72 lg:h-80">
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={event.eventName}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          console.error("Failed to load event image:", imageUrl);
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm text-stone-500">
+                        No image available
                       </div>
+                    )}
 
-                      <Link
-                        href={`/events/${event._id}`}
-                        className="mt-auto flex w-full items-center justify-center rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
+                    {event.category && (
+                      <span className="absolute left-3 top-3 rounded-md bg-[#3E000C] px-2.5 py-1 text-xs font-medium text-[#FFECD1]">
+                        {event.category}
+                      </span>
+                    )}
+
+                    <span className="absolute right-3 top-3 rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-[#3E000C] shadow-sm">
+                      {event.ticketPrice === undefined || event.ticketPrice === 0
+                        ? "Free"
+                        : `₹${event.ticketPrice}`}
+                    </span>
+
+                    {/* Wishlist Heart Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleFavorite(event._id)}
+                      disabled={isUpdating}
+                      aria-label={
+                        isFavorite ? "Remove from wishlist" : "Add to wishlist"
+                      }
+                      aria-pressed={isFavorite}
+                      title={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
+                      className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-md transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Heart
+                        className={`h-5 w-5 ${
+                          isFavorite
+                            ? "fill-red-600 text-red-600"
+                            : "text-stone-500"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Event Details */}
+                  <div className="flex flex-1 flex-col gap-4 p-5">
+                    <div className="space-y-2">
+                      <h3
+                        className="line-clamp-1 text-lg font-semibold text-[#3E000C]"
+                        title={event.eventName}
                       >
-                        View details
-                      </Link>
+                        {event.eventName}
+                      </h3>
+
+                      <div className="flex flex-col gap-1 text-sm text-stone-600">
+                        <span className="flex items-center gap-2">
+                          <CalendarDays className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+                          {new Date(event.date).toLocaleDateString("en-IN", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+
+                        {event.time && (
+                          <span className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+                            {event.time}
+                          </span>
+                        )}
+
+                        {event.venue && (
+                          <span className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+                            <span className="truncate" title={event.venue}>
+                              {event.venue}
+                            </span>
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </article>
+
+                    <Link
+                      href={`/events/${event._id}`}
+                      className="mt-auto flex w-full items-center justify-center rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
+                    >
+                      View details
+                    </Link>
+                  </div>
+                </article>
+
                 );
               })}
             </div>

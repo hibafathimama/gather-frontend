@@ -372,15 +372,20 @@ export default function OrganizerDashboard() {
                 >
                   <div className="relative">
                     {event.image ? (
-                      <img
-                        src={
-                          event.image.startsWith("http")
-                            ? event.image
-                            : `${(backendUrl || "").replace(/\/api\/?$/, "")}${event.image}`
-                        }
-                        alt={event.eventName}
-                        className="h-48 w-full object-cover"
-                      />
+<img
+  src={
+    event.image.startsWith("http")
+      ? event.image
+      : `${backendUrl?.replace(/\/api\/?$/, "")}${event.image.startsWith("/") ? event.image : `/${event.image}`}`
+  }
+  alt={event.eventName || "Event image"}
+  className="h-48 w-full object-cover"
+  onError={(e) => {
+    console.error("Failed to load event image:", e.currentTarget.src);
+    e.currentTarget.style.display = "none";
+  }}
+/>
+
                     ) : (
                       <div className="grid h-48 w-full place-items-center bg-[#3E000C] text-[#FFECD1]">
                         <Ticket className="h-10 w-10 opacity-80" />

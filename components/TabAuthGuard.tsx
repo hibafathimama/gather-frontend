@@ -4,41 +4,47 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 export default function TabAuthGuard({
-  children,
+children,
 }: {
-  children: React.ReactNode;
+children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const router = useRouter();
+const pathname = usePathname();
+const router = useRouter();
 
-  const [allowed, setAllowed] = useState(false);
+const [allowed, setAllowed] = useState(false);
 
-  useEffect(() => {
-    const publicRoutes = ["/login", "/registration"];
+useEffect(() => {
+// Pages that can be opened without logging in
+const isPublicRoute =
+pathname === "/" ||
+pathname === "/login" ||
+pathname === "/registration" ||
+pathname === "/events" ||
+pathname.startsWith("/events/");
 
-    if (publicRoutes.includes(pathname)) {
-      setAllowed(true);
-      return;
-    }
+if (isPublicRoute) {
+  setAllowed(true);
+  return;
+}
 
-    const tabAuthenticated =
-      sessionStorage.getItem("tabAuthenticated");
+// Check whether the current browser tab is authenticated
+const tabAuthenticated =
+  sessionStorage.getItem("tabAuthenticated");
 
-    if (tabAuthenticated !== "true") {
-      router.replace("/login");
-      return;
-    }
+if (tabAuthenticated !== "true") {
+  router.replace("/login");
+  return;
+}
 
-    setAllowed(true);
-  }, [pathname, router]);
+setAllowed(true);
 
-  if (!allowed) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        Redirecting to login...
-      </div>
-    );
-  }
+}, [pathname, router]);
 
-  return <>{children}</>;
+if (!allowed) {
+return ( <div className="flex min-h-screen items-center justify-center">
+Redirecting to login... </div>
+);
+}
+
+return <>{children}</>;
 }

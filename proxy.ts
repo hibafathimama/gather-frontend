@@ -5,14 +5,14 @@ const token = request.cookies.get("token")?.value;
 const role = request.cookies.get("role")?.value;
 const pathname = request.nextUrl.pathname;
 
-// Public routes
+// Public routes: accessible without login
 const publicRoutes = ["/", "/login", "/register", "/events"];
 
 const isPublicRoute = publicRoutes.some((route) => {
 return pathname === route || pathname.startsWith(route + "/");
 });
 
-// Allow public routes
+// Allow public routes without authentication
 if (isPublicRoute) {
 return NextResponse.next();
 }

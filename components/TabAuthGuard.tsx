@@ -18,7 +18,7 @@ useEffect(() => {
 const isPublicRoute =
 pathname === "/" ||
 pathname === "/login" ||
-pathname === "/registration" ||
+pathname === "/register" ||
 pathname === "/events" ||
 pathname.startsWith("/events/");
 

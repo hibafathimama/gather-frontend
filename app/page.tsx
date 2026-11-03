@@ -275,7 +275,7 @@ export default function HomePage() {
           </p>
 
           <Link
-            href="/login"
+            href="/register"
             className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#FFECD1] px-6 py-3.5 font-bold text-[#3E000C] transition hover:bg-white"
           >
             Get Started <ArrowRight className="h-5 w-5" />

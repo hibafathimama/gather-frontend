@@ -12,6 +12,7 @@ import {
   Flag,
   X,
   Send,
+  MessageCircle,
   Loader2,
   AlertCircle,
   CheckCircle2,
@@ -283,8 +284,11 @@ const imageUrl = getImageUrl(event.image);
               </div>
             )}
 
-            {/* Price and booking */}
-            <div className="flex flex-col gap-4 border-t border-stone-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          {/* Price, booking and messaging */}
+
+          <div className="flex flex-col gap-4 border-t border-stone-100 pt-5">
+
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-stone-500">Ticket price</p>
                 <p className="text-2xl font-bold text-[#3E000C]">
@@ -294,14 +298,28 @@ const imageUrl = getImageUrl(event.image);
                 </p>
               </div>
 
-              <Link
-                href={`/events/${event._id}/book`}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#3E000C] px-8 py-3 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
-              >
-                <Ticket className="h-4 w-4" />
-                Book tickets
-              </Link>
+          ```
+          <Link
+            href={`/events/${event._id}/book`}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#3E000C] px-8 py-3 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
+          >
+            <Ticket className="h-4 w-4" />
+            Book tickets
+          </Link>
+          ```
+
             </div>
+
+            <Link
+              href={`/user/messages/${event._id}`}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#3E000C] bg-white px-6 py-3 text-sm font-semibold text-[#3E000C] transition hover:bg-[#3E000C] hover:text-white"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Message Organizer
+            </Link>
+
+          </div>
+
 
             {/* Report section */}
             <div className="border-t border-stone-100 pt-5">

@@ -7,6 +7,7 @@ import {
   Search,
   SlidersHorizontal,
   Heart,
+  MessageCircle,
   CalendarDays,
   MapPin,
   ChevronLeft,
@@ -274,6 +275,13 @@ const getImageUrl = (image?: string | null) => {
             >
               <Heart className="h-4 w-4" />
               My wishlist ({favoriteIds.length})
+            </Link>
+            <Link
+              href="/user/messages/"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFECD1]/40 px-5 py-2.5 text-sm font-semibold text-[#FFECD1] transition hover:bg-white/10"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Messages
             </Link>
           </div>
         </section>

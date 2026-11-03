@@ -18,6 +18,7 @@ import {
   CalendarX2,
   AlertCircle,
   Loader2,
+  MessageCircle, 
 } from "lucide-react";
 import { EventType } from "@/types/event";
 import OrganizerHeader from "@/components/OrganizerHeader";
@@ -273,6 +274,13 @@ export default function OrganizerDashboard() {
             </div>
 
             <div className="flex flex-wrap gap-2">
+              <Link
+                href="/organizer/messages"
+                className="inline-flex items-center gap-2 rounded-lg border border-[#F5D8B3] bg-white px-4 py-2.5 text-sm font-semibold text-[#3E000C] transition hover:border-[#3E000C]"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Messages
+              </Link>
               <Link
                 href="/organizer/bookings"
                 className="inline-flex items-center gap-2 rounded-lg border border-[#F5D8B3] bg-white px-4 py-2.5 text-sm font-semibold text-[#3E000C] transition hover:border-[#3E000C]"

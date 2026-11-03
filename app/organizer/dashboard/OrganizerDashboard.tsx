@@ -479,6 +479,13 @@ export default function OrganizerDashboard() {
                         <Pencil className="h-4 w-4" />
                         Edit
                       </Link>
+                      <Link
+                        href={`/organizer/events/${event._id}/reviews`}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#F5D8B3] bg-[#FFECD1] px-3 py-2 text-sm font-semibold text-[#3E000C] transition hover:border-[#3E000C]"
+                      >
+                        <Eye className="h-4 w-4" />
+                        Manage Reviews
+                      </Link>
 
                       <button
                         type="button"

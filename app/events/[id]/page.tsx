@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import type { EventType } from "@/types/event";
+import ReviewForm from "@/components/ReviewForm";
+import ReviewList from "@/components/ReviewList";
 
 function EventDetailsContent() {
   const params = useParams();
@@ -35,6 +37,7 @@ function EventDetailsContent() {
   const [submitting, setSubmitting] = useState(false);
   const [reportMessage, setReportMessage] = useState("");
   const [reportError, setReportError] = useState("");
+  const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
 
   useEffect(() => {
     const getEvent = async () => {
@@ -434,6 +437,20 @@ const imageUrl = getImageUrl(event.image);
             </div>
           </div>
         </article>
+        {/* Reviews and Ratings */}
+        <section className="mt-8 space-y-6">
+          <ReviewForm
+            eventId={event._id}
+            onReviewSubmitted={() =>
+              setReviewRefreshKey((previous) => previous + 1)
+            }
+          />
+
+          <ReviewList
+            eventId={event._id}
+            refreshKey={reviewRefreshKey}
+          />
+        </section>
       </div>
     </div>
   );

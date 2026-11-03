@@ -1,4 +1,5 @@
 import Link from "next/link";
+import FeaturedEvents from "@/components/FeaturedEvents";
 import {
   ArrowRight,
   CalendarDays,
@@ -78,21 +79,7 @@ export default function HomePage() {
           </Link>
 
           <nav className="hidden items-center gap-7 md:flex">
-            <Link href="/" className="font-medium hover:text-orange-700">
-              Home
-            </Link>
-            <Link
-              href="/events"
-              className="font-medium hover:text-orange-700"
-            >
-              Explore Events
-            </Link>
-            <Link
-              href="/login"
-              className="font-medium hover:text-orange-700"
-            >
-              My Bookings
-            </Link>
+
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -104,7 +91,7 @@ export default function HomePage() {
             </Link>
 
             <Link
-              href="/registration"
+              href="/register"
               className="rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A1020] sm:px-5"
             >
               Sign up
@@ -145,7 +132,7 @@ export default function HomePage() {
               </Link>
 
               <Link
-                href="/registration"
+                href="/register"
                 className="rounded-xl border border-[#D8B99B] bg-white px-6 py-4 font-semibold transition hover:bg-[#FFF0DE]"
               >
                 Join Gather
@@ -238,108 +225,38 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {categories.map((category) => {
-              const Icon = category.icon;
+<div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+  {categories.map((category) => {
+    const Icon = category.icon;
 
-              return (
-                <Link
-                  key={category.name}
-                  href="/events"
-                  className="group rounded-2xl border border-[#F1DDC7] bg-[#FFF9F2] p-6 transition hover:-translate-y-1 hover:border-[#D9A77D] hover:shadow-lg"
-                >
-                  <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#3E000C] text-[#FFECD1] transition group-hover:bg-orange-800">
-                    <Icon className="h-7 w-7" />
-                  </div>
+    return (
+      <Link
+        key={category.name}
+        href={`/events?category=${encodeURIComponent(category.name)}`}
+        className="group rounded-2xl border border-[#F1DDC7] bg-[#FFF9F2] p-6 transition hover:-translate-y-1 hover:border-[#D9A77D] hover:shadow-lg"
+      >
+        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#3E000C] text-[#FFECD1] transition group-hover:bg-orange-800">
+          <Icon className="h-7 w-7" />
+        </div>
 
-                  <h3 className="text-lg font-bold">{category.name}</h3>
+        <h3 className="text-lg font-bold">{category.name}</h3>
 
-                  <p className="mt-2 text-sm leading-6 text-stone-600">
-                    {category.description}
-                  </p>
+        <p className="mt-2 text-sm leading-6 text-stone-600">
+          {category.description}
+        </p>
 
-                  <div className="mt-5 flex items-center gap-2 text-sm font-semibold text-orange-800">
-                    Explore <ArrowRight className="h-4 w-4" />
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+        <div className="mt-5 flex items-center gap-2 text-sm font-semibold text-orange-800">
+          Explore <ArrowRight className="h-4 w-4" />
+        </div>
+      </Link>
+    );
+  })}
+</div>
         </div>
       </section>
 
-      {/* Featured Events */}
-      <section className="py-16 sm:py-20">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8">
-          <div className="mb-10">
-            <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-orange-800">
-              Something for everyone
-            </p>
-
-            <h2 className="text-3xl font-extrabold sm:text-4xl">
-              Find your next experience
-            </h2>
-
-            <p className="mt-3 max-w-2xl leading-7 text-stone-600">
-              Discover music, art, sports, and community experiences.
-              Browse available events to find the right one for you.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {featuredEvents.map((event) => (
-              <article
-                key={event.name}
-                className="overflow-hidden rounded-2xl border border-[#F1DDC7] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-              >
-                <div
-                  className={`flex h-56 items-center justify-center bg-gradient-to-br ${event.color}`}
-                >
-                  <span className="text-8xl text-white/90">
-                    {event.symbol}
-                  </span>
-                </div>
-
-                <div className="p-6">
-                  <span className="rounded-full bg-[#FFF0DE] px-3 py-1 text-xs font-semibold text-[#7B351F]">
-                    {event.category}
-                  </span>
-
-                  <h3 className="mt-4 text-xl font-bold">{event.name}</h3>
-
-                  <div className="mt-4 space-y-3 text-sm text-stone-600">
-                    <p className="flex items-center gap-2">
-                      <CalendarDays className="h-4 w-4 shrink-0 text-orange-800" />
-                      {event.date}
-                    </p>
-
-                    <p className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 shrink-0 text-orange-800" />
-                      {event.location}
-                    </p>
-                  </div>
-
-                  <Link
-                    href="/events"
-                    className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#3E000C] px-4 py-3 font-semibold text-white transition hover:bg-[#5A1020]"
-                  >
-                    Browse Events <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className="mt-10 text-center">
-            <Link
-              href="/events"
-              className="inline-flex items-center gap-2 rounded-xl border border-[#3E000C] px-6 py-3 font-semibold transition hover:bg-[#3E000C] hover:text-white"
-            >
-              View All Events <ArrowRight className="h-5 w-5" />
-            </Link>
-          </div>
-        </div>
-      </section>
+{/* Featured Events - Actual events from MongoDB */}
+<FeaturedEvents />
 
       {/* Call to Action */}
       <section className="px-5 pb-16 sm:px-8 sm:pb-20">
@@ -384,7 +301,7 @@ export default function HomePage() {
             <Link href="/login" className="hover:text-orange-800">
               Login
             </Link>
-            <Link href="/registration" className="hover:text-orange-800">
+            <Link href="/register" className="hover:text-orange-800">
               Register
             </Link>
           </div>

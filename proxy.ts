@@ -6,7 +6,7 @@ export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
 // Public routes: accessible without login
-const publicRoutes = ["/", "/login", "/registration", "/events"];
+const publicRoutes = ["/", "/login", "/register", "/events"];
 
 const isPublicRoute =
   publicRoutes.includes(pathname) ||
@@ -15,7 +15,7 @@ const isPublicRoute =
 // Allow public routes without authentication
 if (isPublicRoute) {
   // Only redirect logged-in users from login/registration
-  if (pathname === "/login" || pathname === "/registration") {
+  if (pathname === "/login" || pathname === "/register") {
     if (token && role === "admin") {
       return NextResponse.redirect(
         new URL("/admin/dashboard", request.url)

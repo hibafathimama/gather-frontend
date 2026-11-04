@@ -24,6 +24,8 @@ export default function CreateEventPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [seatingType, setSeatingType] = useState("general");
+  const [seatNumbers, setSeatNumbers] = useState("");
 
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>
@@ -41,6 +43,30 @@ export default function CreateEventPage() {
       }
 
       const formData = new FormData(e.currentTarget);
+      formData.set("seatingType", seatingType);
+
+      if (seatingType === "reserved") {
+        const seats = seatNumbers
+          .split(",")
+          .map((seat) => seat.trim())
+          .filter(Boolean);
+
+        const totalSeats = Number(formData.get("totalSeats"));
+
+        if (seats.length !== totalSeats) {
+          throw new Error(
+            `Please enter exactly ${totalSeats} seat numbers.`
+          );
+        }
+
+        if (new Set(seats).size !== seats.length) {
+          throw new Error("Duplicate seat numbers are not allowed.");
+        }
+
+        formData.set("seats", JSON.stringify(seats));
+      } else {
+        formData.delete("seats");
+      }
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
       if (!backendUrl) {
@@ -263,7 +289,51 @@ export default function CreateEventPage() {
                 <FileText className="absolute left-4 top-4 h-5 w-5 text-stone-400 pointer-events-none" />
               </div>
             </div>
+            {/* Seating Type */}
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                Seating Type *
+              </label>
 
+              <select
+                value={seatingType}
+                onChange={(e) => {
+                  setSeatingType(e.target.value);
+                  setSeatNumbers("");
+                }}
+                className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 text-sm text-stone-900 outline-none focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+              >
+                <option value="general">General Admission</option>
+                <option value="reserved">Reserved Seating</option>
+              </select>
+
+              <p className="mt-1.5 text-xs text-stone-500">
+                Choose whether attendees can select individual seats.
+              </p>
+            </div>
+
+            {/* Reserved Seat Numbers */}
+            {seatingType === "reserved" && (
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                  Seat Numbers *
+                </label>
+
+                <textarea
+                  value={seatNumbers}
+                  onChange={(e) => setSeatNumbers(e.target.value)}
+                  placeholder="Example: A1, A2, A3, A4, B1, B2"
+                  rows={3}
+                  required
+                  className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 p-4 text-sm text-stone-900 placeholder-stone-400 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                />
+
+                <p className="mt-1.5 text-xs text-stone-500">
+                  Separate each seat number with a comma. The number of
+                  seat numbers must match Total Seats.
+                </p>
+              </div>
+            )}
             {/* Ticket Price and Total Seats */}
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>

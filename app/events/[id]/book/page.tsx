@@ -20,12 +20,21 @@ import {
   CreditCard,
   BadgeCheck,
   QrCode,
+  Armchair,
 } from "lucide-react";
+
+interface SeatData {
+  seatNumber: string;
+  status: "available" | "reserved" | "booked";
+}
 
 interface EventData {
   _id: string;
   eventName: string;
   ticketPrice: number;
+  seatingType: "general" | "reserved";
+  seats: SeatData[];
+  availableSeats: number;
 }
 
 interface RazorpayOrder {
@@ -40,10 +49,12 @@ interface RazorpaySuccessResponse {
   razorpay_order_id: string;
   razorpay_signature: string;
 }
+
 interface BookingResponse {
   bookingId: string;
   ticketToken: string;
   quantity: number;
+  selectedSeats: string[];
   totalPrice: number;
   status: string;
   paymentStatus: string;
@@ -93,21 +104,29 @@ export default function BookEvent({
 }) {
   const [eventId, setEventId] = useState("");
   const [event, setEvent] = useState<EventData | null>(null);
+
   const [ticketType, setTicketType] = useState("General");
   const [quantity, setQuantity] = useState(1);
+
+  // Stores the seats selected by the user.
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
   const [bookingDetails, setBookingDetails] =
     useState<BookingResponse | null>(null);
 
   const backendUrl =
     process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
 
+  // Get event ID from route parameters.
   useEffect(() => {
     params.then((value) => setEventId(value.id));
   }, [params]);
 
+  // Fetch event details.
   useEffect(() => {
     if (!eventId) return;
 
@@ -145,6 +164,7 @@ export default function BookEvent({
 
         if (selectedEvent) {
           setEvent(selectedEvent);
+          setSelectedSeats([]);
         } else {
           setMessage("Event not found.");
         }
@@ -162,6 +182,28 @@ export default function BookEvent({
     fetchEvent();
   }, [eventId, backendUrl]);
 
+  // Handle seat selection.
+  const handleSeatSelection = (seatNumber: string) => {
+    if (submitting || !event) return;
+
+    const seat = (event.seats || []).find(
+      (item) => item.seatNumber === seatNumber
+    );
+
+    if (!seat || seat.status !== "available") return;
+
+    setSelectedSeats((current) => {
+      if (current.includes(seatNumber)) {
+        return current.filter((item) => item !== seatNumber);
+      }
+
+      return [...current, seatNumber];
+    });
+
+    setMessage("");
+  };
+
+  // Load Razorpay checkout script.
   const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
       if (window.Razorpay) {
@@ -196,6 +238,14 @@ export default function BookEvent({
     });
   };
 
+  // Calculate quantity based on seating type.
+  const bookingQuantity =
+    event?.seatingType === "reserved" ? selectedSeats.length : quantity;
+
+  // Calculate total price.
+  const totalPrice = event ? event.ticketPrice * bookingQuantity : 0;
+
+  // Handle booking and payment.
   const handleBooking = async () => {
     if (!event) return;
 
@@ -206,8 +256,26 @@ export default function BookEvent({
       return;
     }
 
-    if (!Number.isInteger(quantity) || quantity < 1) {
+    // Validate quantity for general admission.
+    if (
+      event.seatingType === "general" &&
+      (!Number.isInteger(quantity) || quantity < 1)
+    ) {
       setMessage("Please enter a valid number of tickets.");
+      return;
+    }
+
+    // Validate selected seats for reserved seating.
+    if (
+      event.seatingType === "reserved" &&
+      selectedSeats.length < 1
+    ) {
+      setMessage("Please select at least one seat.");
+      return;
+    }
+
+    if (bookingQuantity > event.availableSeats) {
+      setMessage("Not enough seats are available.");
       return;
     }
 
@@ -219,22 +287,29 @@ export default function BookEvent({
       const scriptLoaded = await loadRazorpayScript();
 
       if (!scriptLoaded || !window.Razorpay) {
-        throw new Error("Unable to load Razorpay Checkout. Please try again.");
+        throw new Error(
+          "Unable to load Razorpay Checkout. Please try again."
+        );
       }
 
-      // Ask the backend to create a Razorpay order.
-      const orderResponse = await fetch(`${backendUrl}/payments/create-order`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          eventId,
-          quantity,
-          ticketType,
-        }),
-      });
+      // Create Razorpay order.
+      const orderResponse = await fetch(
+        `${backendUrl}/payments/create-order`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            eventId,
+            quantity: bookingQuantity,
+            ticketType,
+            selectedSeats:
+              event.seatingType === "reserved" ? selectedSeats : [],
+          }),
+        }
+      );
 
       const orderResult = await orderResponse.json();
 
@@ -246,7 +321,7 @@ export default function BookEvent({
 
       const order: RazorpayOrder = orderResult.data;
 
-      // Open the Razorpay payment window.
+      // Open Razorpay payment window.
       const options: RazorpayOptions = {
         key: order.keyId,
         amount: order.amount,
@@ -260,29 +335,24 @@ export default function BookEvent({
             setSubmitting(true);
             setMessage("Payment received. Verifying payment...");
 
-            /*
-             * IMPORTANT:
-             * We will create this verification endpoint
-             * in the next step.
-             *
-             * Do not create or confirm a booking until the
-             * backend verifies the Razorpay signature.
-             */
-            const verifyResponse = await fetch(`${backendUrl}/payments/verify`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                razorpay_order_id: paymentResponse.razorpay_order_id,
-                razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                razorpay_signature: paymentResponse.razorpay_signature,
-                eventId,
-                quantity,
-                ticketType,
-              }),
-            });
+            const verifyResponse = await fetch(
+              `${backendUrl}/payments/verify`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: paymentResponse.razorpay_order_id,
+                  razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                  razorpay_signature: paymentResponse.razorpay_signature,
+                  eventId,
+                  quantity: bookingQuantity,
+                  ticketType,
+                }),
+              }
+            );
 
             const verifyResult: RazorpayVerifyResult =
               await verifyResponse.json();
@@ -338,6 +408,7 @@ export default function BookEvent({
 
   const inputClass =
     "w-full rounded-lg border border-stone-300 bg-white py-3 pl-11 pr-4 text-sm text-stone-900 outline-none transition focus:border-[#3E000C] focus:ring-2 focus:ring-[#3E000C]/15";
+
   const labelClass = "mb-1.5 block text-sm font-medium text-stone-700";
 
   if (loading) {
@@ -358,6 +429,7 @@ export default function BookEvent({
           <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-[#FFECD1] text-[#3E000C]">
             <CalendarX2 className="h-6 w-6" />
           </span>
+
           <p className="mb-5 text-sm text-stone-700">
             {message || "Event not found."}
           </p>
@@ -374,7 +446,6 @@ export default function BookEvent({
     );
   }
 
-  // Message style: success, in-progress or error
   const messageTone = message.includes("verified")
     ? "success"
     : message.includes("Verifying")
@@ -397,12 +468,12 @@ export default function BookEvent({
   return (
     <div className="min-h-screen bg-[#FFECD1] px-4 py-6 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
       <div className="mx-auto max-w-xl">
-        {/* Header */}
         <header className="mb-8 flex items-center justify-between border-b border-[#F5D8B3] pb-5">
           <Link href="/user/dashboard" className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3E000C] text-[#FFECD1]">
               <Ticket className="h-5 w-5" />
             </div>
+
             <div className="leading-tight">
               <p className="text-lg font-bold tracking-tight text-[#3E000C]">
                 Gather
@@ -421,12 +492,13 @@ export default function BookEvent({
         </header>
 
         <div className="overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm">
-          {/* Event summary */}
           <div className="bg-[#3E000C] px-6 py-6 text-[#FFECD1] sm:px-8">
             <p className="text-sm text-[#FFECD1]/75">Book tickets</p>
+
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-white">
               {event.eventName}
             </h1>
+
             <p className="mt-2 text-sm text-[#FFECD1]/75">
               Price per ticket:{" "}
               <span className="font-semibold text-white">
@@ -436,34 +508,135 @@ export default function BookEvent({
           </div>
 
           <div className="space-y-6 p-6 sm:p-8">
-            {/* Booking form (hidden once the booking is confirmed) */}
             {!bookingDetails && (
               <>
-                <div className="space-y-5">
-                  <div>
-                    <label htmlFor="ticketType" className={labelClass}>
-                      Ticket type
-                    </label>
-                    <div className="relative">
-                      <Tag className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-                      <select
-                        id="ticketType"
-                        value={ticketType}
-                        onChange={(e) => setTicketType(e.target.value)}
-                        disabled={submitting}
-                        className={inputClass}
-                      >
-                        <option value="General">General</option>
-                        <option value="VIP">VIP</option>
-                        <option value="Premium">Premium</option>
-                      </select>
+                {/* Ticket type */}
+                <div>
+                  <label htmlFor="ticketType" className={labelClass}>
+                    Ticket type
+                  </label>
+
+                  <div className="relative">
+                    <Tag className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+
+                    <select
+                      id="ticketType"
+                      value={ticketType}
+                      onChange={(e) => setTicketType(e.target.value)}
+                      disabled={submitting}
+                      className={inputClass}
+                    >
+                      <option value="General">General</option>
+                      <option value="VIP">VIP</option>
+                      <option value="Premium">Premium</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Reserved seating */}
+                {event.seatingType === "reserved" && (
+                  <div className="space-y-4">
+                    <div>
+                      <h2 className="flex items-center gap-2 text-lg font-bold text-[#3E000C]">
+                        <Armchair className="h-5 w-5" />
+                        Select your seats
+                      </h2>
+
+                      <p className="mt-1 text-sm text-stone-600">
+                        Choose the seats you want to book.
+                      </p>
+                    </div>
+
+                    {/* Seat status legend */}
+                    <div className="flex flex-wrap gap-3 text-xs text-stone-600">
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-3 w-3 rounded bg-emerald-500" />
+                        Available
+                      </span>
+
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-3 w-3 rounded bg-[#3E000C]" />
+                        Selected
+                      </span>
+
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-3 w-3 rounded bg-orange-400" />
+                        Reserved
+                      </span>
+
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-3 w-3 rounded bg-red-500" />
+                        Booked
+                      </span>
+                    </div>
+
+                    {/* Screen indicator */}
+                    <div className="rounded-lg border border-stone-200 bg-stone-100 py-3 text-center text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">
+                      Screen / Stage
+                    </div>
+
+                    {/* Seat layout */}
+                    <div className="grid grid-cols-4 gap-3 sm:grid-cols-5">
+                      {(event.seats || []).map((seat) => {
+                        const isSelected = selectedSeats.includes(
+                          seat.seatNumber
+                        );
+
+                        const seatColor = isSelected
+                          ? "bg-[#3E000C] text-white border-[#3E000C]"
+                          : seat.status === "available"
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                            : seat.status === "reserved"
+                              ? "bg-orange-100 text-orange-800 border-orange-300"
+                              : "bg-red-100 text-red-800 border-red-300";
+
+                        return (
+                          <button
+                            key={seat.seatNumber}
+                            type="button"
+                            onClick={() =>
+                              handleSeatSelection(seat.seatNumber)
+                            }
+                            disabled={
+                              submitting || seat.status !== "available"
+                            }
+                            aria-pressed={isSelected}
+                            className={`rounded-lg border px-2 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-80 ${seatColor}`}
+                          >
+                            {seat.seatNumber}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {(!event.seats || event.seats.length === 0) && (
+                      <p className="rounded-lg bg-orange-50 p-3 text-sm text-orange-800">
+                        No seat information is available for this event.
+                      </p>
+                    )}
+
+                    {/* Selected seats */}
+                    <div className="rounded-lg border border-[#F5D8B3] bg-[#FFECD1]/50 p-4">
+                      <p className="text-sm font-semibold text-[#3E000C]">
+                        Selected seats ({selectedSeats.length})
+                      </p>
+
+                      <p className="mt-1 text-sm text-stone-600">
+                        {selectedSeats.length > 0
+                          ? selectedSeats.join(", ")
+                          : "No seats selected yet."}
+                      </p>
                     </div>
                   </div>
+                )}
 
+                {/* General admission quantity selector */}
+                {event.seatingType === "general" && (
                   <div>
                     <label htmlFor="quantity" className={labelClass}>
                       Number of tickets
                     </label>
+
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -481,47 +654,74 @@ export default function BookEvent({
                         id="quantity"
                         type="number"
                         min="1"
+                        max={event.availableSeats}
                         step="1"
                         value={quantity}
                         disabled={submitting}
                         onChange={(e) =>
-                          setQuantity(Math.max(1, Number(e.target.value) || 1))
+                          setQuantity(
+                            Math.max(
+                              1,
+                              Math.min(
+                                event.availableSeats,
+                                Number(e.target.value) || 1
+                              )
+                            )
+                          )
                         }
                         className="h-11 w-full rounded-lg border border-stone-300 bg-white px-4 text-center text-sm font-semibold text-stone-900 outline-none transition focus:border-[#3E000C] focus:ring-2 focus:ring-[#3E000C]/15"
                       />
 
                       <button
                         type="button"
-                        onClick={() => setQuantity((current) => current + 1)}
-                        disabled={submitting}
+                        onClick={() =>
+                          setQuantity((current) =>
+                            Math.min(event.availableSeats, current + 1)
+                          )
+                        }
+                        disabled={
+                          submitting || quantity >= event.availableSeats
+                        }
                         aria-label="Increase tickets"
                         className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-stone-300 bg-white text-[#3E000C] transition hover:border-[#3E000C] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Plus className="h-4 w-4" />
                       </button>
                     </div>
-                  </div>
-                </div>
 
-                {/* Total */}
+                    <p className="mt-2 text-xs text-stone-500">
+                      {event.availableSeats} tickets currently available.
+                    </p>
+                  </div>
+                )}
+
+                {/* Total price */}
                 <div className="flex items-center justify-between rounded-lg bg-[#FFECD1]/50 px-4 py-3">
                   <div>
                     <p className="text-sm font-medium text-[#3E000C]">
                       Total price
                     </p>
+
                     <p className="text-xs text-stone-600">
-                      {quantity} × ₹{event.ticketPrice}
+                      {bookingQuantity} × ₹{event.ticketPrice}
                     </p>
                   </div>
+
                   <span className="text-2xl font-bold text-[#3E000C]">
-                    ₹{event.ticketPrice * quantity}
+                    ₹{totalPrice}
                   </span>
                 </div>
 
+                {/* Payment button */}
                 <button
                   type="button"
                   onClick={handleBooking}
-                  disabled={submitting}
+                  disabled={
+                    submitting ||
+                    (event.seatingType === "reserved" &&
+                      selectedSeats.length === 0) ||
+                    event.availableSeats < 1
+                  }
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#3E000C] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {submitting ? (
@@ -529,6 +729,7 @@ export default function BookEvent({
                   ) : (
                     <Lock className="h-4 w-4" />
                   )}
+
                   {submitting ? "Processing payment..." : "Pay with Razorpay"}
                 </button>
 
@@ -538,7 +739,7 @@ export default function BookEvent({
               </>
             )}
 
-            {/* Status message */}
+            {/* Message */}
             {message && (
               <p
                 role="status"
@@ -549,7 +750,7 @@ export default function BookEvent({
               </p>
             )}
 
-            {/* Booking confirmed */}
+            {/* Booking confirmation */}
             {bookingDetails && (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-5 sm:p-6">
                 <h2 className="flex items-center gap-2 text-xl font-bold text-emerald-900">
@@ -560,34 +761,55 @@ export default function BookEvent({
                 <ul className="mt-4 space-y-3 text-sm text-emerald-950">
                   <li className="flex items-start gap-3 break-all">
                     <Hash className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+
                     <span>
                       <span className="font-medium">Booking ID:</span>{" "}
                       {bookingDetails.bookingId}
                     </span>
                   </li>
+
                   <li className="flex items-start gap-3">
                     <Ticket className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+
                     <span>
                       <span className="font-medium">Event:</span>{" "}
                       {event.eventName}
                     </span>
                   </li>
+
                   <li className="flex items-start gap-3">
                     <Users className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+
                     <span>
                       <span className="font-medium">Tickets:</span>{" "}
                       {bookingDetails.quantity}
                     </span>
                   </li>
+
+                  {/* Display booked seat numbers */}
+                  {bookingDetails.selectedSeats?.length > 0 && (
+                    <li className="flex items-start gap-3">
+                      <Armchair className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+
+                      <span>
+                        <span className="font-medium">Selected seats:</span>{" "}
+                        {bookingDetails.selectedSeats.join(", ")}
+                      </span>
+                    </li>
+                  )}
+
                   <li className="flex items-start gap-3">
                     <Wallet className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+
                     <span>
                       <span className="font-medium">Total price:</span> ₹
                       {bookingDetails.totalPrice}
                     </span>
                   </li>
+
                   <li className="flex items-start gap-3">
                     <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+
                     <span>
                       <span className="font-medium">Payment status:</span>{" "}
                       <span className="capitalize">
@@ -595,15 +817,20 @@ export default function BookEvent({
                       </span>
                     </span>
                   </li>
+
                   <li className="flex items-start gap-3">
                     <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+
                     <span>
                       <span className="font-medium">Booking status:</span>{" "}
-                      <span className="capitalize">{bookingDetails.status}</span>
+                      <span className="capitalize">
+                        {bookingDetails.status}
+                      </span>
                     </span>
                   </li>
                 </ul>
 
+                {/* QR code */}
                 {bookingDetails.qrCode && (
                   <div className="mt-6 text-center">
                     <h3 className="mb-3 flex items-center justify-center gap-2 font-semibold text-emerald-900">

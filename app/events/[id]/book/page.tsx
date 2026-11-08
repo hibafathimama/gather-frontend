@@ -31,17 +31,9 @@ interface SeatData {
 interface EventData {
   _id: string;
   eventName: string;
-
-  // General ticket price
-  ticketPrices?: {
-    general: number;
-  };
-
-  // Support older events
-  ticketPrice?: number;
-
+  ticketPrice: number;
   seatingType: "general" | "reserved";
-  seats: SeatData[];
+  seats?: SeatData[];
   availableSeats: number;
 }
 
@@ -107,9 +99,6 @@ declare global {
   }
 }
 
-// Only General ticket is available
-type TicketType = "General";
-
 export default function BookEvent({
   params,
 }: {
@@ -117,8 +106,6 @@ export default function BookEvent({
 }) {
   const [eventId, setEventId] = useState("");
   const [event, setEvent] = useState<EventData | null>(null);
-
-  const [ticketType] = useState<TicketType>("General");
 
   const [quantity, setQuantity] = useState(1);
 
@@ -186,6 +173,7 @@ export default function BookEvent({
         if (selectedEvent) {
           setEvent(selectedEvent);
           setSelectedSeats([]);
+          setQuantity(1);
         } else {
           setMessage("Event not found.");
         }
@@ -270,9 +258,9 @@ export default function BookEvent({
       ? selectedSeats.length
       : quantity;
 
-  // Get General ticket price.
+  // Get single ticket price.
   const selectedTicketPrice = event
-    ? event.ticketPrices?.general ?? event.ticketPrice ?? 0
+    ? Number(event.ticketPrice) || 0
     : 0;
 
   // Calculate total price.
@@ -290,10 +278,10 @@ export default function BookEvent({
       return;
     }
 
-    // Validate selected ticket price.
+    // Validate ticket price.
     if (
       !Number.isFinite(selectedTicketPrice) ||
-      selectedTicketPrice < 0
+      selectedTicketPrice <= 0
     ) {
       setMessage("Invalid ticket price.");
       return;
@@ -302,7 +290,8 @@ export default function BookEvent({
     // Validate quantity for general admission.
     if (
       event.seatingType === "general" &&
-      (!Number.isInteger(quantity) || quantity < 1)
+      (!Number.isInteger(quantity) ||
+        quantity < 1)
     ) {
       setMessage("Please enter a valid number of tickets.");
       return;
@@ -347,7 +336,6 @@ export default function BookEvent({
           body: JSON.stringify({
             eventId,
             quantity: bookingQuantity,
-            ticketType,
             selectedSeats:
               event.seatingType === "reserved"
                 ? selectedSeats
@@ -373,7 +361,7 @@ export default function BookEvent({
         amount: order.amount,
         currency: order.currency,
         name: "Gather",
-        description: `General tickets for ${event.eventName}`,
+        description: `${event.eventName} - ${bookingQuantity} ticket(s)`,
         order_id: order.orderId,
 
         handler: async (paymentResponse) => {
@@ -384,6 +372,7 @@ export default function BookEvent({
               "Payment received. Verifying payment..."
             );
 
+            // Verify Razorpay payment.
             const verifyResponse = await fetch(
               `${backendUrl}/payments/verify`,
               {
@@ -401,15 +390,6 @@ export default function BookEvent({
 
                   razorpay_signature:
                     paymentResponse.razorpay_signature,
-
-                  eventId,
-                  quantity: bookingQuantity,
-                  ticketType,
-
-                  selectedSeats:
-                    event.seatingType === "reserved"
-                      ? selectedSeats
-                      : [],
                 }),
               }
             );
@@ -438,6 +418,7 @@ export default function BookEvent({
             setMessage(
               "Payment verified and booking confirmed!"
             );
+
           } catch (error) {
             setMessage(
               error instanceof Error
@@ -467,6 +448,7 @@ export default function BookEvent({
       const razorpay = new window.Razorpay(options);
 
       razorpay.open();
+
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -586,7 +568,7 @@ export default function BookEvent({
             </h1>
 
             <p className="mt-2 text-sm text-[#FFECD1]/75">
-              General ticket price:{" "}
+              Ticket price:{" "}
               <span className="font-semibold text-white">
                 ₹{selectedTicketPrice}
               </span>
@@ -596,29 +578,22 @@ export default function BookEvent({
           <div className="space-y-6 p-6 sm:p-8">
             {!bookingDetails && (
               <>
-                {/* Ticket type */}
-<div>
-  <label
-    htmlFor="ticketType"
-    className={labelClass}
-  >
-    Ticket type
-  </label>
+                {/* Single Ticket Price */}
+                <div className="rounded-lg border border-[#F5D8B3] bg-[#FFECD1]/40 p-4">
+                  <p className="text-sm font-medium text-[#3E000C]">
+                    Ticket price
+                  </p>
 
-  <div className="relative">
-    <Tag className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                  <p className="mt-1 text-xl font-bold text-[#3E000C]">
+                    ₹{selectedTicketPrice}
 
-    <div className="w-full rounded-lg border border-stone-300 bg-white py-3 pl-11 pr-4 text-sm text-stone-900">
-      General
-    </div>
-  </div>
+                    <span className="ml-1 text-sm font-normal text-stone-500">
+                      per ticket
+                    </span>
+                  </p>
+                </div>
 
-  <p className="mt-2 text-sm font-medium text-[#3E000C]">
-    Price: ₹{selectedTicketPrice} per ticket
-  </p>
-</div>
-
-                {/* Reserved seating */}
+                {/* Reserved Seating */}
                 {event.seatingType === "reserved" && (
                   <div className="space-y-4">
                     <div>
@@ -632,7 +607,7 @@ export default function BookEvent({
                       </p>
                     </div>
 
-                    {/* Seat status legend */}
+                    {/* Seat Status Legend */}
                     <div className="flex flex-wrap gap-3 text-xs text-stone-600">
                       <span className="flex items-center gap-1.5">
                         <span className="h-3 w-3 rounded bg-emerald-500" />
@@ -655,12 +630,12 @@ export default function BookEvent({
                       </span>
                     </div>
 
-                    {/* Screen indicator */}
+                    {/* Screen Indicator */}
                     <div className="rounded-lg border border-stone-200 bg-stone-100 py-3 text-center text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">
                       Screen / Stage
                     </div>
 
-                    {/* Seat layout */}
+                    {/* Seat Layout */}
                     <div className="grid grid-cols-4 gap-3 sm:grid-cols-5">
                       {(event.seats || []).map((seat) => {
                         const isSelected =
@@ -705,7 +680,7 @@ export default function BookEvent({
                       </p>
                     )}
 
-                    {/* Selected seats */}
+                    {/* Selected Seats */}
                     <div className="rounded-lg border border-[#F5D8B3] bg-[#FFECD1]/50 p-4">
                       <p className="text-sm font-semibold text-[#3E000C]">
                         Selected seats ({selectedSeats.length})
@@ -720,7 +695,7 @@ export default function BookEvent({
                   </div>
                 )}
 
-                {/* General admission quantity selector */}
+                {/* General Admission Quantity */}
                 {event.seatingType === "general" && (
                   <div>
                     <label
@@ -796,7 +771,7 @@ export default function BookEvent({
                   </div>
                 )}
 
-                {/* Total price */}
+                {/* Total Price */}
                 <div className="flex items-center justify-between rounded-lg bg-[#FFECD1]/50 px-4 py-3">
                   <div>
                     <p className="text-sm font-medium text-[#3E000C]">
@@ -814,7 +789,7 @@ export default function BookEvent({
                   </span>
                 </div>
 
-                {/* Payment button */}
+                {/* Payment Button */}
                 <button
                   type="button"
                   onClick={handleBooking}
@@ -854,7 +829,7 @@ export default function BookEvent({
               </p>
             )}
 
-            {/* Booking confirmation */}
+            {/* Booking Confirmation */}
             {bookingDetails && (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-5 sm:p-6">
                 <h2 className="flex items-center gap-2 text-xl font-bold text-emerald-900">
@@ -890,9 +865,13 @@ export default function BookEvent({
 
                     <span>
                       <span className="font-medium">
-                        Ticket type:
+                        Price per ticket:
                       </span>{" "}
-                      General
+                      ₹
+                      {bookingDetails.quantity > 0
+                        ? bookingDetails.totalPrice /
+                          bookingDetails.quantity
+                        : 0}
                     </span>
                   </li>
 
@@ -958,7 +937,7 @@ export default function BookEvent({
                   </li>
                 </ul>
 
-                {/* QR code */}
+                {/* QR Code */}
                 {bookingDetails.qrCode && (
                   <div className="mt-6 text-center">
                     <h3 className="mb-3 flex items-center justify-center gap-2 font-semibold text-emerald-900">

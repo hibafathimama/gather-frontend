@@ -22,6 +22,7 @@ interface UserProfile {
   lastName: string;
   email: string;
   role: string;
+  image?: string;
 }
 
 export default function MyProfilePage() {
@@ -31,6 +32,10 @@ export default function MyProfilePage() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
 
+  // Profile image states
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
+
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -39,6 +44,19 @@ export default function MyProfilePage() {
 
   const backendUrl =
     process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
+
+  // Get the correct image URL
+  const getImageUrl = (image?: string) => {
+    if (!image) return "";
+
+    if (image.startsWith("http://") || image.startsWith("https://")) {
+      return image;
+    }
+
+    const backendOrigin = new URL(backendUrl).origin;
+
+    return `${backendOrigin}${image.startsWith("/") ? image : `/${image}`}`;
+  };
 
   // Fetch the user's profile
   useEffect(() => {
@@ -66,10 +84,13 @@ export default function MyProfilePage() {
           throw new Error(result.message || "Failed to fetch profile");
         }
 
-        setProfile(result.data);
-        setFirstName(result.data.firstName || "");
-        setLastName(result.data.lastName || "");
-        setEmail(result.data.email || "");
+        const userData = result.data;
+
+        setProfile(userData);
+        setFirstName(userData.firstName || "");
+        setLastName(userData.lastName || "");
+        setEmail(userData.email || "");
+        setImagePreview(getImageUrl(userData.image));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong");
       } finally {
@@ -79,6 +100,36 @@ export default function MyProfilePage() {
 
     fetchProfile();
   }, [backendUrl]);
+
+  // Select profile image
+  const handleImageChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    // Validate image type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      setError("Only JPG, PNG and WEBP images are allowed.");
+      event.target.value = "";
+      return;
+    }
+
+    // Validate image size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Image size should be less than 2MB.");
+      event.target.value = "";
+      return;
+    }
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setError("");
+    setMessage("");
+  };
 
   // Update the user's profile
   const handleUpdateProfile = async (
@@ -111,18 +162,24 @@ export default function MyProfilePage() {
         return;
       }
 
+      // Create FormData to send text fields and image
+      const formData = new FormData();
+
+      formData.append("firstName", firstName.trim());
+      formData.append("lastName", lastName.trim());
+      formData.append("email", email.trim());
+
+      if (imageFile) {
+        formData.append("image", imageFile);
+      }
+
       const response = await fetch(`${backendUrl}/users/my-profile`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         credentials: "include",
-        body: JSON.stringify({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: email.trim(),
-        }),
+        body: formData,
       });
 
       const result = await response.json();
@@ -131,12 +188,16 @@ export default function MyProfilePage() {
         throw new Error(result.message || "Failed to update profile");
       }
 
-      // Update the displayed profile immediately
-      setProfile(result.data);
-      setFirstName(result.data.firstName || "");
-      setLastName(result.data.lastName || "");
-      setEmail(result.data.email || "");
+      const updatedUser = result.data;
 
+      // Update displayed profile
+      setProfile(updatedUser);
+      setFirstName(updatedUser.firstName || "");
+      setLastName(updatedUser.lastName || "");
+      setEmail(updatedUser.email || "");
+      setImagePreview(getImageUrl(updatedUser.image));
+
+      setImageFile(null);
       setIsEditing(false);
       setMessage("Profile updated successfully!");
     } catch (err) {
@@ -146,9 +207,25 @@ export default function MyProfilePage() {
     }
   };
 
+  const handleCancel = () => {
+    if (profile) {
+      setFirstName(profile.firstName);
+      setLastName(profile.lastName);
+      setEmail(profile.email);
+      setImagePreview(getImageUrl(profile.image));
+    }
+
+    setImageFile(null);
+    setIsEditing(false);
+    setError("");
+    setMessage("");
+  };
+
   const inputClass =
     "w-full rounded-lg border border-stone-300 bg-white py-3 pl-11 pr-4 text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#3E000C] focus:ring-2 focus:ring-[#3E000C]/15";
+
   const labelClass = "mb-1.5 block text-sm font-medium text-stone-700";
+
   const iconClass =
     "pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400";
 
@@ -173,6 +250,7 @@ export default function MyProfilePage() {
           <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-red-50 text-red-600">
             <AlertCircle className="h-6 w-6" />
           </span>
+
           <p className="mb-5 text-sm text-stone-700">
             {error || "Unable to load your profile."}
           </p>
@@ -198,12 +276,14 @@ export default function MyProfilePage() {
   return (
     <div className="min-h-screen bg-[#FFECD1] px-4 py-6 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
       <div className="mx-auto max-w-xl">
+
         {/* Header */}
         <header className="mb-8 flex items-center justify-between border-b border-[#F5D8B3] pb-5">
           <Link href="/user/dashboard" className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3E000C] text-[#FFECD1]">
               <Ticket className="h-5 w-5" />
             </div>
+
             <div className="leading-tight">
               <p className="text-lg font-bold tracking-tight text-[#3E000C]">
                 Gather
@@ -222,16 +302,30 @@ export default function MyProfilePage() {
         </header>
 
         <div className="overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm">
+
           {/* Profile header */}
           <div className="flex items-center gap-4 bg-[#3E000C] px-6 py-6 text-[#FFECD1]">
-            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-[#FFECD1] text-2xl font-bold text-[#3E000C]">
-              {profile.firstName?.charAt(0).toUpperCase()}
+
+            {/* Profile image */}
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-[#FFECD1] bg-[#FFECD1]">
+              {imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="grid h-full w-full place-items-center text-2xl font-bold text-[#3E000C]">
+                  {profile.firstName?.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
 
             <div className="min-w-0">
               <h1 className="truncate text-xl font-bold tracking-tight text-white sm:text-2xl">
                 {profile.firstName} {profile.lastName}
               </h1>
+
               <p className="mt-0.5 text-sm capitalize text-[#FFECD1]/75">
                 {profile.role} account
               </p>
@@ -240,10 +334,12 @@ export default function MyProfilePage() {
 
           {/* Profile content */}
           <div className="p-6 sm:p-8">
+
             <div className="mb-6">
               <h2 className="text-lg font-semibold text-[#3E000C]">
                 My profile
               </h2>
+
               <p className="mt-0.5 text-sm text-stone-600">
                 Manage your account information.
               </p>
@@ -271,13 +367,62 @@ export default function MyProfilePage() {
 
             {isEditing ? (
               <form onSubmit={handleUpdateProfile} className="space-y-5">
+
+                {/* Profile image upload */}
+                <div>
+                  <label className={labelClass}>
+                    Profile picture
+                  </label>
+
+                  <div className="flex items-center gap-5">
+
+                    <div className="h-20 w-20 overflow-hidden rounded-full border border-stone-300 bg-[#FFECD1]">
+                      {imagePreview ? (
+                        <img
+                          src={imagePreview}
+                          alt="Profile preview"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-[#3E000C]">
+                          {firstName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="profileImage"
+                        className="inline-flex cursor-pointer items-center rounded-lg bg-[#3E000C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2B0008]"
+                      >
+                        Choose image
+                      </label>
+
+                      <input
+                        id="profileImage"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+
+                      <p className="mt-2 text-xs text-stone-500">
+                        JPG, PNG or WEBP. Maximum 2MB.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* First name and last name */}
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div>
                     <label htmlFor="firstName" className={labelClass}>
                       First name
                     </label>
+
                     <div className="relative">
                       <User className={iconClass} />
+
                       <input
                         id="firstName"
                         type="text"
@@ -294,8 +439,10 @@ export default function MyProfilePage() {
                     <label htmlFor="lastName" className={labelClass}>
                       Last name
                     </label>
+
                     <div className="relative">
                       <User className={iconClass} />
+
                       <input
                         id="lastName"
                         type="text"
@@ -309,12 +456,15 @@ export default function MyProfilePage() {
                   </div>
                 </div>
 
+                {/* Email */}
                 <div>
                   <label htmlFor="email" className={labelClass}>
                     Email address
                   </label>
+
                   <div className="relative">
                     <Mail className={iconClass} />
+
                     <input
                       id="email"
                       type="email"
@@ -327,6 +477,7 @@ export default function MyProfilePage() {
                   </div>
                 </div>
 
+                {/* Buttons */}
                 <div className="flex flex-wrap gap-3 pt-1">
                   <button
                     type="submit"
@@ -338,20 +489,14 @@ export default function MyProfilePage() {
                     ) : (
                       <Save className="h-4 w-4" />
                     )}
+
                     {saving ? "Saving..." : "Save changes"}
                   </button>
 
                   <button
                     type="button"
                     disabled={saving}
-                    onClick={() => {
-                      setFirstName(profile.firstName);
-                      setLastName(profile.lastName);
-                      setEmail(profile.email);
-                      setIsEditing(false);
-                      setError("");
-                      setMessage("");
-                    }}
+                    onClick={handleCancel}
                     className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 disabled:opacity-60"
                   >
                     <X className="h-4 w-4" />
@@ -360,7 +505,7 @@ export default function MyProfilePage() {
                 </div>
               </form>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <dl className="grid gap-5 sm:grid-cols-2">
                   {details.map(({ label, value, Icon }) => (
                     <div
@@ -372,8 +517,10 @@ export default function MyProfilePage() {
                       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#FFECD1] text-[#3E000C]">
                         <Icon className="h-5 w-5" />
                       </span>
+
                       <div className="min-w-0">
                         <dt className="text-sm text-stone-500">{label}</dt>
+
                         <dd
                           className={`break-all font-semibold text-stone-900 ${
                             label === "Account role" ? "capitalize" : ""
@@ -401,8 +548,9 @@ export default function MyProfilePage() {
               </div>
             )}
 
-            <div className="mt-6 border-t border-stone-100 pt-6">
-              <Link
+            {/* My bookings */}
+              <div className="mt-3 border-t border-stone-100 pt-3">
+                <Link
                 href="/user/bookings"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#3E000C] px-5 py-3 text-sm font-semibold text-[#3E000C] transition hover:bg-[#3E000C]/5"
               >
@@ -410,6 +558,7 @@ export default function MyProfilePage() {
                 View my bookings
               </Link>
             </div>
+
           </div>
         </div>
       </div>

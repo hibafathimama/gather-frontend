@@ -2,18 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { 
-  Calendar, 
-  CalendarDays, 
-  CalendarCheck2, 
-  CalendarX2, 
-  Search, 
-  ArrowLeft, 
-  Pencil, 
-  Power, 
-  Loader2, 
-  AlertCircle, 
-  CheckCircle2 
+import {
+  Calendar,
+  CalendarCheck2,
+  CalendarX2,
+  Search,
+  ArrowLeft,
+  Pencil,
+  Power,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import api from "@/lib/api";
 import AdminNavbar from "@/components/AdminNavbar";
@@ -142,7 +141,9 @@ export default function AdminEventsPage() {
 
       setMessage(
         response.data.message ||
-          `Event ${isCurrentlyActive ? "deactivated" : "activated"} successfully.`
+          `Event ${
+            isCurrentlyActive ? "deactivated" : "activated"
+          } successfully.`
       );
     } catch (err: unknown) {
       const errorMessage =
@@ -152,8 +153,7 @@ export default function AdminEventsPage() {
                 err as {
                   response?: { data?: { message?: string } };
                 }
-              ).response?.data?.message ||
-                `Failed to ${action} event.`
+              ).response?.data?.message || `Failed to ${action} event.`
             )
           : "Unable to connect to the server.";
 
@@ -180,10 +180,10 @@ export default function AdminEventsPage() {
   return (
     <>
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+        @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap");
 
         .editorial-heading {
-          font-family: 'Cormorant Garamond', Georgia, serif;
+          font-family: "Cormorant Garamond", Georgia, serif;
           letter-spacing: -0.02em;
         }
       `}</style>
@@ -192,18 +192,20 @@ export default function AdminEventsPage() {
 
       <main className="min-h-screen bg-[#FFECD1] px-4 py-10 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1] md:p-12">
         <div className="mx-auto max-w-7xl">
-          
           {/* Header Section */}
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#F5D8B3] pb-6">
             <div>
               <span className="mb-1 inline-block rounded-lg bg-[#3E000C]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#3E000C]">
                 Platform Catalog
               </span>
+
               <h1 className="editorial-heading text-4xl font-bold tracking-tight text-[#3E000C] sm:text-5xl">
                 Manage Events
               </h1>
+
               <p className="mt-1 text-sm text-stone-600">
-                View, monitor, and moderate all live experiences published on the platform.
+                View, monitor, and moderate all live experiences published on
+                the platform.
               </p>
             </div>
 
@@ -211,44 +213,71 @@ export default function AdminEventsPage() {
               href="/admin/dashboard"
               className="inline-flex items-center gap-2 rounded-2xl border border-[#F5D8B3] bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#3E000C] shadow-sm transition-all hover:bg-stone-50"
             >
-              <ArrowLeft className="h-4 w-4" /> Dashboard
+              <ArrowLeft className="h-4 w-4" />
+              Dashboard
             </Link>
           </div>
 
           {/* Stats Overview Cards */}
           <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
+            {/* Total Events */}
             <div className="rounded-3xl border border-[#F5D8B3] bg-white p-6 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFECD1] text-[#3E000C]">
                   <Calendar className="h-5 w-5" />
                 </span>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">Total</span>
+
+                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                  Total
+                </span>
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Total Events</p>
-              <p className="editorial-heading mt-1 text-4xl font-bold text-[#3E000C]">{events.length}</p>
+
+              <p className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                Total Events
+              </p>
+
+              <p className="editorial-heading mt-1 text-4xl font-bold text-[#3E000C]">
+                {events.length}
+              </p>
             </div>
 
+            {/* Active Events */}
             <div className="rounded-3xl border border-[#F5D8B3] bg-white p-6 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFECD1] text-[#3E000C]">
                   <CalendarCheck2 className="h-5 w-5" />
                 </span>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Active</span>
+
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">
+                  Active
+                </span>
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Active Events</p>
+
+              <p className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                Active Events
+              </p>
+
               <p className="editorial-heading mt-1 text-4xl font-bold text-[#3E000C]">
                 {events.filter((event) => event.isActive !== false).length}
               </p>
             </div>
 
+            {/* Inactive Events */}
             <div className="rounded-3xl border border-[#F5D8B3] bg-white p-6 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFECD1] text-[#3E000C]">
                   <CalendarX2 className="h-5 w-5" />
                 </span>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">Inactive</span>
+
+                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                  Inactive
+                </span>
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Inactive Events</p>
+
+              <p className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                Inactive Events
+              </p>
+
               <p className="editorial-heading mt-1 text-4xl font-bold text-[#3E000C]">
                 {events.filter((event) => event.isActive === false).length}
               </p>
@@ -274,7 +303,8 @@ export default function AdminEventsPage() {
                   placeholder="Search by event name, category, location, or organizer..."
                   className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pl-11 text-sm text-stone-900 placeholder-stone-400 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
                 />
-                <Search className="absolute left-4 top-3.5 h-5 w-5 text-stone-400 pointer-events-none" />
+
+                <Search className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-stone-400" />
               </div>
             </div>
 
@@ -296,14 +326,15 @@ export default function AdminEventsPage() {
 
             {/* Table States */}
             {loading ? (
-              <div className="flex items-center justify-center py-20 text-stone-600 font-medium">
+              <div className="flex items-center justify-center py-20 font-medium text-stone-600">
                 <Loader2 className="mr-2 h-5 w-5 animate-spin text-[#3E000C]" />
                 Loading events catalog...
               </div>
             ) : filteredEvents.length === 0 ? (
               <div className="rounded-2xl border border-stone-200 bg-stone-50/50 p-12 text-center">
                 <Calendar className="mx-auto mb-3 h-10 w-10 text-stone-400" />
-                <p className="text-stone-600 font-medium">
+
+                <p className="font-medium text-stone-600">
                   {search ? "No matching events found." : "No events found."}
                 </p>
               </div>
@@ -332,7 +363,8 @@ export default function AdminEventsPage() {
                         event.location || event.venue || "Not specified";
 
                       const organizer =
-                        typeof event.organizer === "object" && event.organizer
+                        typeof event.organizer === "object" &&
+                        event.organizer
                           ? `${event.organizer.firstName || ""} ${
                               event.organizer.lastName || ""
                             }`.trim() ||
@@ -348,8 +380,14 @@ export default function AdminEventsPage() {
                           key={event._id}
                           className="transition hover:bg-stone-50/50"
                         >
+                          {/* Event Name - Click to View Details */}
                           <td className="px-4 py-4">
-                            <p className="font-bold text-stone-900">{eventName}</p>
+                          <Link
+                            href={`/admin/events/${event._id}`}
+                            className="font-bold text-stone-900 transition hover:text-[#3E000C] hover:underline"
+                          >
+                            {eventName}
+                          </Link>
 
                             {typeof event.availableSeats === "number" && (
                               <p className="mt-1 text-xs font-semibold text-stone-500">
@@ -365,15 +403,22 @@ export default function AdminEventsPage() {
                           </td>
 
                           <td className="px-4 py-4 text-sm text-stone-700">
-                            <p className="font-semibold">{formatDate(event.date)}</p>
+                            <p className="font-semibold">
+                              {formatDate(event.date)}
+                            </p>
+
                             <p className="mt-0.5 text-xs text-stone-500">
                               {event.time || "Time not specified"}
                             </p>
                           </td>
 
-                          <td className="px-4 py-4 text-sm text-stone-700 font-medium">{location}</td>
+                          <td className="px-4 py-4 text-sm font-medium text-stone-700">
+                            {location}
+                          </td>
 
-                          <td className="px-4 py-4 text-sm text-stone-700 font-medium">{organizer}</td>
+                          <td className="px-4 py-4 text-sm font-medium text-stone-700">
+                            {organizer}
+                          </td>
 
                           <td className="px-4 py-4 text-sm font-bold text-[#3E000C]">
                             {typeof event.ticketPrice === "number"
@@ -383,10 +428,10 @@ export default function AdminEventsPage() {
 
                           <td className="px-4 py-4">
                             <span
-                              className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                              className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider ${
                                 isActive
-                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                  : "bg-stone-100 text-stone-700 border border-stone-200"
+                                  ? "border-emerald-200 bg-emerald-100 text-emerald-800"
+                                  : "border-stone-200 bg-stone-100 text-stone-700"
                               }`}
                             >
                               {isActive ? "Active" : "Inactive"}
@@ -395,12 +440,21 @@ export default function AdminEventsPage() {
 
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-2">
-                              <Link
-                                href={`/admin/events/edit/${event._id}`}
-                                className="inline-flex items-center gap-1.5 rounded-xl border border-[#3E000C] bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-[#3E000C] shadow-sm transition hover:bg-[#3E000C] hover:text-[#FFECD1]"
-                              >
-                                <Pencil className="h-3.5 w-3.5" /> Edit
-                              </Link>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/admin/events/${event._id}`}
+                            className="rounded-md border border-blue-600 px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-600 hover:text-white"
+                          >
+                            View
+                          </Link>
+
+                          <Link
+                            href={`/admin/events/edit/${event._id}`}
+                            className="rounded-md bg-[#3E000C] px-2 py-1 text-xs font-medium text-white hover:bg-[#5A0012]"
+                          >
+                            Edit
+                          </Link>
+                        </div>
 
                               <button
                                 type="button"
@@ -417,6 +471,7 @@ export default function AdminEventsPage() {
                                 ) : (
                                   <Power className="h-3.5 w-3.5" />
                                 )}
+
                                 {isChanging
                                   ? "Updating..."
                                   : isActive
@@ -433,7 +488,6 @@ export default function AdminEventsPage() {
               </div>
             )}
           </section>
-
         </div>
       </main>
     </>

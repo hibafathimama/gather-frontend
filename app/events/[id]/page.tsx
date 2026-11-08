@@ -301,25 +301,23 @@ const imageUrl = getImageUrl(event.image);
                 </p>
               </div>
 
-          ```
-          <Link
+          
+<Link
+  href={`/user/messages/${event._id}`}
+  className="inline-flex w-auto items-center justify-center gap-2 rounded-lg border border-[#3E000C] bg-white px-4 py-2 text-xs font-semibold text-[#3E000C] transition hover:bg-[#3E000C] hover:text-white"
+>
+  <MessageCircle className="h-3.5 w-3.5" />
+  Message Organizer
+</Link>
+
+            </div>
+            <Link
             href={`/events/${event._id}/book`}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#3E000C] px-8 py-3 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
           >
             <Ticket className="h-4 w-4" />
             Book tickets
-          </Link>
-          ```
-
-            </div>
-
-            <Link
-              href={`/user/messages/${event._id}`}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#3E000C] bg-white px-6 py-3 text-sm font-semibold text-[#3E000C] transition hover:bg-[#3E000C] hover:text-white"
-            >
-              <MessageCircle className="h-4 w-4" />
-              Message Organizer
-            </Link>
+          </Link>       
 
           </div>
 

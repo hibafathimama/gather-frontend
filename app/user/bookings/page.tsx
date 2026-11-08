@@ -198,6 +198,16 @@ export default function MyBookingsPage() {
         </header>
 
         {/* Page title */}
+                <div className="mt-8">
+          <Link
+            href="/user/dashboard"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#3E000C] hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to dashboard
+          </Link>
+        </div>
+        <br />
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-[#3E000C] sm:text-3xl">
             My bookings
@@ -366,15 +376,7 @@ export default function MyBookingsPage() {
           </div>
         )}
 
-        <div className="mt-8">
-          <Link
-            href="/user/dashboard"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#3E000C] hover:underline"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to dashboard
-          </Link>
-        </div>
+
       </div>
     </main>
   );

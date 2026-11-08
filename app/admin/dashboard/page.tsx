@@ -41,7 +41,7 @@ interface OrganizerNotification {
     lastName: string;
     email: string;
     verificationStatus: "pending" | "approved" | "rejected";
-  };
+  } | null;
 }
 
 export default function AdminDashboard() {
@@ -55,15 +55,24 @@ export default function AdminDashboard() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [notifications, setNotifications] = useState<OrganizerNotification[]>([]);
+
+  const [notifications, setNotifications] = useState<
+    OrganizerNotification[]
+  >([]);
+
   const [notificationError, setNotificationError] = useState("");
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [actionMessage, setActionMessage] = useState("");
+
   const [announcement, setAnnouncement] = useState("");
   const [announcementMessage, setAnnouncementMessage] = useState("");
   const [announcementLoading, setAnnouncementLoading] = useState(false);
 
-  // For announcement
+  // Count pending organizer requests
+  const pendingOrganizerCount = notifications.filter(
+    (notification) =>
+      notification.organizer?.verificationStatus === "pending"
+  ).length;
+
+  // Send announcement
   const handleSendAnnouncement = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
@@ -113,65 +122,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleOrganizerAction = async (
-    organizerId: string,
-    action: "approve" | "reject"
-  ) => {
-    const actionText = action === "approve" ? "approve" : "reject";
-
-    if (
-      action === "reject" &&
-      !window.confirm("Are you sure you want to reject this organizer?")
-    ) {
-      return;
-    }
-
-    try {
-      setActionLoading(organizerId);
-      setActionMessage("");
-      setNotificationError("");
-
-      const response = await api.patch(
-        `/admin/organizers/${organizerId}/${action}`,
-        {},
-        { withCredentials: true }
-      );
-
-      setNotifications((previousNotifications) =>
-        previousNotifications.map((notification) =>
-          notification.organizer?._id === organizerId
-            ? {
-                ...notification,
-                organizer: {
-                  ...notification.organizer,
-                  verificationStatus: action === "approve" ? "approved" : "rejected",
-                },
-              }
-            : notification
-        )
-      );
-
-      setActionMessage(response.data.message || `Organizer ${actionText}d successfully.`);
-    } catch (err: unknown) {
-      if (err && typeof err === "object" && "response" in err) {
-        const apiError = err as {
-          response?: {
-            data?: { message?: string };
-          };
-        };
-
-        setNotificationError(
-          apiError.response?.data?.message ||
-            `Failed to ${actionText} organizer.`
-        );
-      } else {
-        setNotificationError(`Unable to ${actionText} organizer.`);
-      }
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
+  // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
@@ -191,7 +142,9 @@ export default function AdminDashboard() {
 
           setError(
             apiError.response?.data?.message ||
-              `Failed to load dashboard (HTTP ${apiError.response?.status || "error"}).`
+              `Failed to load dashboard (HTTP ${
+                apiError.response?.status || "error"
+              }).`
           );
         } else {
           setError("Unable to connect to the backend.");
@@ -201,13 +154,16 @@ export default function AdminDashboard() {
       }
     };
 
+    // Fetch organizer verification notifications
     const fetchNotifications = async () => {
       try {
         const response = await api.get("/admin/notifications", {
           withCredentials: true,
         });
 
-        setNotifications(response.data.data || []);
+        setNotifications(
+          Array.isArray(response.data.data) ? response.data.data : []
+        );
       } catch (err: unknown) {
         if (err && typeof err === "object" && "response" in err) {
           const apiError = err as {
@@ -221,7 +177,9 @@ export default function AdminDashboard() {
               "Failed to load organizer notifications."
           );
         } else {
-          setNotificationError("Unable to load organizer notifications.");
+          setNotificationError(
+            "Unable to load organizer notifications."
+          );
         }
       }
     };
@@ -230,36 +188,55 @@ export default function AdminDashboard() {
     fetchDashboardStats();
   }, []);
 
+  // Dashboard cards
   const dashboardCards = [
     {
       title: "Total Users",
       value: stats.totalUsers,
       href: "/admin/users",
       Icon: Users,
+      iconStyle: "bg-[#FFECD1] text-[#3E000C]",
+      valueStyle: "text-[#3E000C]",
     },
     {
       title: "Total Organizers",
       value: stats.totalOrganizers,
       href: "/admin/users",
       Icon: ShieldCheck,
+      iconStyle: "bg-[#FFECD1] text-[#3E000C]",
+      valueStyle: "text-[#3E000C]",
     },
     {
       title: "Total Events",
       value: stats.totalEvents,
       href: "/admin/events",
       Icon: Calendar,
+      iconStyle: "bg-[#FFECD1] text-[#3E000C]",
+      valueStyle: "text-[#3E000C]",
     },
     {
       title: "Total Bookings",
       value: stats.totalBookings,
       href: "/admin/bookings",
       Icon: Ticket,
+      iconStyle: "bg-[#FFECD1] text-[#3E000C]",
+      valueStyle: "text-[#3E000C]",
     },
     {
       title: "Pending Reports",
       value: stats.pendingReports,
       href: "/admin/reports",
       Icon: AlertTriangle,
+      iconStyle: "bg-[#FFECD1] text-[#3E000C]",
+      valueStyle: "text-[#3E000C]",
+    },
+    {
+      title: "Pending Organizer Requests",
+      value: pendingOrganizerCount,
+      href: "/admin/notifications",
+      Icon: ShieldAlert,
+      iconStyle: "bg-red-100 text-red-600",
+      valueStyle: "text-red-600",
     },
   ];
 
@@ -278,12 +255,15 @@ export default function AdminDashboard() {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#FFECD1] p-6 text-stone-900">
         <ShieldAlert className="h-12 w-12 text-red-600" />
+
         <p className="font-semibold text-red-600">{error}</p>
+
         <button
           onClick={() => window.location.reload()}
           className="inline-flex items-center gap-2 rounded-2xl bg-[#3E000C] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#2B0008]"
         >
-          <RefreshCw className="h-4 w-4" /> Try Again
+          <RefreshCw className="h-4 w-4" />
+          Try Again
         </button>
       </main>
     );
@@ -292,10 +272,10 @@ export default function AdminDashboard() {
   return (
     <>
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+        @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap");
 
         .editorial-heading {
-          font-family: 'Cormorant Garamond', Georgia, serif;
+          font-family: "Cormorant Garamond", Georgia, serif;
           letter-spacing: -0.02em;
         }
       `}</style>
@@ -304,60 +284,82 @@ export default function AdminDashboard() {
 
       <main className="min-h-screen bg-[#FFECD1] px-4 py-8 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1] md:p-10">
         <div className="mx-auto max-w-7xl">
-          
+
           {/* Header Section */}
           <div className="mb-8 border-b border-[#F5D8B3] pb-6">
             <span className="mb-1 inline-block rounded-lg bg-[#3E000C]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#3E000C]">
               Super Admin Control Center
             </span>
+
             <h1 className="editorial-heading text-4xl font-bold tracking-tight text-[#3E000C] sm:text-5xl">
               Admin Dashboard
             </h1>
+
             <p className="mt-1 text-sm text-stone-600">
-              Manage platform users, verify organizers, review events, and broadcast announcements.
+              Manage platform users, verify organizers, review events, and
+              broadcast announcements.
             </p>
           </div>
 
           {/* Stats Cards Grid */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {dashboardCards.map(({ title, value, href, Icon }) => (
-              <Link
-                key={title}
-                href={href}
-                className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-[#F5D8B3] bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-[#3E000C]"
-              >
-                <div>
-                  <div className="mb-4 flex items-center justify-between">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFECD1] text-[#3E000C]">
-                      <Icon className="h-6 w-6" />
-                    </span>
-                    <span className="text-xs font-bold uppercase tracking-wider text-stone-400 group-hover:text-[#3E000C] transition-colors">
-                      View →
-                    </span>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+            {dashboardCards.map(
+              ({ title, value, href, Icon, iconStyle, valueStyle }) => (
+                <Link
+                  key={title}
+                  href={href}
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-[#F5D8B3] bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#3E000C] hover:shadow-xl"
+                >
+                  <div>
+                    <div className="mb-4 flex items-center justify-between">
+                      <span
+                        className={`flex h-12 w-12 items-center justify-center rounded-2xl ${iconStyle}`}
+                      >
+                        <Icon className="h-6 w-6" />
+                      </span>
+
+                      <span className="text-xs font-bold uppercase tracking-wider text-stone-400 transition-colors group-hover:text-[#3E000C]">
+                        View →
+                      </span>
+                    </div>
+
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                      {title}
+                    </h2>
+
+                    <p
+                      className={`editorial-heading mt-1 text-4xl font-bold ${valueStyle}`}
+                    >
+                      {value}
+                    </p>
                   </div>
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                    {title}
-                  </h2>
-                  <p className="editorial-heading mt-1 text-4xl font-bold text-[#3E000C]">
-                    {value}
-                  </p>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              )
+            )}
           </div>
+
+          {/* Notification Error */}
+          {notificationError && (
+            <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {notificationError}
+            </p>
+          )}
 
           {/* Send Announcement Section */}
           <section className="mt-10 rounded-3xl border border-[#F5D8B3] bg-white p-8 shadow-sm">
-            <div className="flex items-center gap-3 border-b border-stone-100 pb-4 mb-6">
+            <div className="mb-6 flex items-center gap-3 border-b border-stone-100 pb-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFECD1] text-[#3E000C]">
                 <Megaphone className="h-6 w-6" />
               </span>
+
               <div>
                 <h2 className="editorial-heading text-2xl font-bold text-[#3E000C]">
                   Broadcast Important Announcement
                 </h2>
+
                 <p className="text-xs font-semibold text-stone-500">
-                  Send an instant in-app notification banner across all active platform users.
+                  Send an instant in-app notification banner across all
+                  active platform users.
                 </p>
               </div>
             </div>
@@ -374,7 +376,9 @@ export default function AdminDashboard() {
                 <textarea
                   id="announcement"
                   value={announcement}
-                  onChange={(event) => setAnnouncement(event.target.value)}
+                  onChange={(event) =>
+                    setAnnouncement(event.target.value)
+                  }
                   placeholder="Enter your system-wide announcement here..."
                   rows={4}
                   maxLength={1000}
@@ -399,11 +403,13 @@ export default function AdminDashboard() {
               >
                 {announcementLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Broadcasting...
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Broadcasting...
                   </>
                 ) : (
                   <>
-                    <Megaphone className="h-4 w-4" /> Send Announcement
+                    <Megaphone className="h-4 w-4" />
+                    Send Announcement
                   </>
                 )}
               </button>
@@ -417,14 +423,18 @@ export default function AdminDashboard() {
             </h2>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
               <Link
                 href="/admin/users"
                 className="group flex items-center justify-between rounded-2xl border border-[#F5D8B3] bg-[#FFECD1]/30 p-5 transition-all hover:bg-[#3E000C] hover:text-white"
               >
                 <div className="flex items-center gap-3">
                   <UserCheck className="h-5 w-5 text-[#3E000C] group-hover:text-white" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Manage Users</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    Manage Users
+                  </span>
                 </div>
+
                 <ArrowRight className="h-4 w-4 text-stone-400 group-hover:text-white" />
               </Link>
 
@@ -434,8 +444,11 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center gap-3">
                   <CalendarDays className="h-5 w-5 text-[#3E000C] group-hover:text-white" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Manage Events</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    Manage Events
+                  </span>
                 </div>
+
                 <ArrowRight className="h-4 w-4 text-stone-400 group-hover:text-white" />
               </Link>
 
@@ -445,8 +458,11 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center gap-3">
                   <ClipboardList className="h-5 w-5 text-[#3E000C] group-hover:text-white" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Manage Bookings</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    Manage Bookings
+                  </span>
                 </div>
+
                 <ArrowRight className="h-4 w-4 text-stone-400 group-hover:text-white" />
               </Link>
 
@@ -456,10 +472,14 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center gap-3">
                   <FileText className="h-5 w-5 text-[#3E000C] group-hover:text-white" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Manage Reports</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    Manage Reports
+                  </span>
                 </div>
+
                 <ArrowRight className="h-4 w-4 text-stone-400 group-hover:text-white" />
               </Link>
+
             </div>
           </div>
 

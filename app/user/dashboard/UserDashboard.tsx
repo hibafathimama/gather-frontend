@@ -16,6 +16,7 @@ import {
   AlertCircle,
   CalendarX2,
 } from "lucide-react";
+
 import type { EventType } from "@/types/event";
 import type { UserType } from "@/types/user";
 import UserNavbar from "@/components/UserNavbar";
@@ -26,28 +27,46 @@ export default function UserDashboard() {
   const [user, setUser] = useState<UserType | null>(null);
   const [events, setEvents] = useState<EventType[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [favoriteMessage, setFavoriteMessage] = useState("");
+
   const [updatingFavoriteId, setUpdatingFavoriteId] = useState<string | null>(
     null
   );
 
-  // Pagination states
+  // Pagination
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Search and filter states
+  // Search and filters
   const [searchName, setSearchName] = useState("");
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
-  const [searchTrigger, setSearchTrigger] = useState(0);
+
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [locationOptions, setLocationOptions] = useState<string[]>([]);
+  const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
+
+  // Unread messages
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+
+  const [appliedFilters, setAppliedFilters] = useState({
+    search: "",
+    category: "",
+    location: "",
+    date: "",
+    minPrice: "",
+    maxPrice: "",
+  });
+
   const [showFilters, setShowFilters] = useState(false);
 
-  // Check login and fetch events when page or search changes.
+  // Check login
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
@@ -60,96 +79,281 @@ export default function UserDashboard() {
       setUser(JSON.parse(storedUser));
     } catch {
       localStorage.removeItem("user");
+      localStorage.removeItem("token");
       router.replace("/login");
-      return;
     }
+  }, [router]);
+
+  // Fetch filter options
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        setFilterOptionsLoading(true);
+
+        const response = await fetch("/api/events/filter-options", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.message || "Failed to fetch filter options."
+          );
+        }
+
+        setCategoryOptions(
+          Array.isArray(result.data?.categories)
+            ? result.data.categories
+            : []
+        );
+
+        setLocationOptions(
+          Array.isArray(result.data?.locations)
+            ? result.data.locations
+            : []
+        );
+      } catch (err) {
+        console.error("Error fetching filter options:", err);
+      } finally {
+        setFilterOptionsLoading(false);
+      }
+    };
+
+    fetchFilterOptions();
+  }, []);
+
+  // Fetch events
+  useEffect(() => {
+    if (!user) return;
+
+    let isMounted = true;
+
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+          if (isMounted) {
+            setError("Please log in to view events.");
+            setEvents([]);
+          }
+          return;
+        }
+
+        const params = new URLSearchParams();
+
+        params.set("page", String(page));
+
+        // 9 events per page
+        params.set("limit", "9");
+
+        if (appliedFilters.search) {
+          params.set("search", appliedFilters.search);
+        }
+
+        if (appliedFilters.category) {
+          params.set("category", appliedFilters.category);
+        }
+
+        if (appliedFilters.location) {
+          params.set("location", appliedFilters.location);
+        }
+
+        if (appliedFilters.date) {
+          params.set("date", appliedFilters.date);
+        }
+
+        if (appliedFilters.minPrice !== "") {
+          params.set("minPrice", appliedFilters.minPrice);
+        }
+
+        if (appliedFilters.maxPrice !== "") {
+          params.set("maxPrice", appliedFilters.maxPrice);
+        }
+
+        const response = await fetch(`/api/events?${params.toString()}`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || "Failed to fetch events.");
+        }
+
+        if (!isMounted) return;
+
+        setEvents(Array.isArray(result.data) ? result.data : []);
+
+        setTotalPages(
+          Math.max(1, result.pagination?.totalPages ?? 1)
+        );
+
+        // Fetch wishlist
+        const favoritesResponse = await fetch("/api/favorites", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        const favoritesResult = await favoritesResponse.json();
+
+        if (!favoritesResponse.ok) {
+          throw new Error(
+            favoritesResult.message || "Failed to fetch your wishlist."
+          );
+        }
+
+        if (!isMounted) return;
+
+        const favorites = Array.isArray(favoritesResult.data)
+          ? favoritesResult.data
+          : [];
+
+        const ids = favorites
+          .map(
+            (favorite: {
+              event?: string | { _id: string } | null;
+            }) =>
+              typeof favorite.event === "string"
+                ? favorite.event
+                : favorite.event?._id
+          )
+          .filter((id: string | undefined): id is string => Boolean(id));
+
+        setFavoriteIds(ids);
+      } catch (err: unknown) {
+        console.error("Error fetching events or wishlist:", err);
+
+        if (isMounted) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Failed to load dashboard data."
+          );
+
+          setEvents([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
 
     fetchEvents();
-  }, [router, page, searchTrigger]);
 
-  // Fetch events and the user's wishlist.
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
-      setError("");
+    return () => {
+      isMounted = false;
+    };
+  }, [user, page, appliedFilters]);
 
-      const token = localStorage.getItem("token");
+  // Fetch unread message count directly from backend
+  useEffect(() => {
+    let isMounted = true;
 
-      if (!token) {
-        setError("Please log in to view events.");
-        setEvents([]);
-        return;
-      }
+    const fetchUnreadMessageCount = async () => {
+      try {
+        const token = localStorage.getItem("token");
 
-      const params = new URLSearchParams();
-      params.set("page", String(page));
-      params.set("limit", "6");
+        if (!token) return;
 
-      if (searchName.trim()) params.set("name", searchName.trim());
-      if (category.trim()) params.set("category", category.trim());
-      if (location.trim()) params.set("location", location.trim());
-      if (date) params.set("date", date);
-      if (minPrice !== "") params.set("minPrice", minPrice);
-      if (maxPrice !== "") params.set("maxPrice", maxPrice);
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-      const headers = {
-        Authorization: `Bearer ${token}`,
-      };
+        if (!backendUrl) {
+          console.error("NEXT_PUBLIC_BACKEND_URL is not configured.");
+          return;
+        }
 
-      const response = await fetch(`/api/events?${params.toString()}`, {
-        headers,
-        credentials: "include",
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to fetch events.");
-      }
-
-      setEvents(Array.isArray(result.data) ? result.data : []);
-      setTotalPages(result.pagination?.totalPages ?? result.totalPages ?? 1);
-
-      // Fetch saved events from the backend.
-      const favoritesResponse = await fetch("/api/favorites", {
-        headers,
-        credentials: "include",
-        cache: "no-store",
-      });
-
-      const favoritesResult = await favoritesResponse.json();
-
-      if (!favoritesResponse.ok) {
-        throw new Error(
-          favoritesResult.message || "Failed to fetch your wishlist."
+        const response = await fetch(
+          `${backendUrl}/messages/user/unread-count`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+            cache: "no-store",
+          }
         );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.message || "Failed to fetch unread messages."
+          );
+        }
+
+        if (isMounted) {
+          setUnreadMessageCount(result.unreadCount || 0);
+        }
+      } catch (err) {
+        console.error("Unread message count error:", err);
       }
+    };
 
-      const favorites = Array.isArray(favoritesResult.data)
-        ? favoritesResult.data
-        : [];
+    fetchUnreadMessageCount();
 
-      const ids = favorites
-        .map((favorite: { event?: string | { _id: string } | null }) =>
-          typeof favorite.event === "string"
-            ? favorite.event
-            : favorite.event?._id
-        )
-        .filter((id: string | undefined): id is string => Boolean(id));
+    // Refresh every 15 seconds
+    const interval = setInterval(fetchUnreadMessageCount, 15000);
 
-      setFavoriteIds(ids);
-    } catch (err: unknown) {
-      console.error("Error fetching events or wishlist:", err);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
-      setError(
-        err instanceof Error ? err.message : "Failed to load dashboard data."
-      );
-    } finally {
-      setLoading(false);
-    }
+  // Search
+  const runSearch = () => {
+    setPage(1);
+
+    setAppliedFilters({
+      search: searchName.trim(),
+      category: category.trim(),
+      location: location.trim(),
+      date,
+      minPrice,
+      maxPrice,
+    });
   };
 
-  // Add or remove an event from the wishlist.
+  // Clear filters
+  const clearFilters = () => {
+    setSearchName("");
+    setCategory("");
+    setLocation("");
+    setDate("");
+    setMinPrice("");
+    setMaxPrice("");
+
+    setPage(1);
+
+    setAppliedFilters({
+      search: "",
+      category: "",
+      location: "",
+      date: "",
+      minPrice: "",
+      maxPrice: "",
+    });
+  };
+
+  // Wishlist
   const handleFavorite = async (eventId: string) => {
     const token = localStorage.getItem("token");
 
@@ -180,7 +384,10 @@ export default function UserDashboard() {
           throw new Error(result.message || "Failed to remove event.");
         }
 
-        setFavoriteIds((previous) => previous.filter((id) => id !== eventId));
+        setFavoriteIds((previous) =>
+          previous.filter((id) => id !== eventId)
+        );
+
         setFavoriteMessage("Event removed from your wishlist.");
       } else {
         const response = await fetch("/api/favorites", {
@@ -199,50 +406,46 @@ export default function UserDashboard() {
         setFavoriteIds((previous) =>
           previous.includes(eventId) ? previous : [...previous, eventId]
         );
+
         setFavoriteMessage("Event added to your wishlist!");
       }
     } catch (err: unknown) {
       console.error("Wishlist update error:", err);
 
       setFavoriteMessage(
-        err instanceof Error ? err.message : "Unable to update your wishlist."
+        err instanceof Error
+          ? err.message
+          : "Unable to update your wishlist."
       );
     } finally {
       setUpdatingFavoriteId(null);
     }
   };
 
-  // Image path helper.
-const getImageUrl = (image?: string | null) => {
-  if (!image) return "";
+  // Image URL
+  const getImageUrl = (image?: string | null) => {
+    if (!image) return "";
 
-  const productionBackend = "https://gather-backend-si86.onrender.com";
+    const productionBackend =
+      "https://gather-backend-si86.onrender.com";
 
-  // Images saved using localhost should use Render instead.
-  if (/^https?:\/\/(localhost|127\.0\.0\.1):5000\//i.test(image)) {
-    return image.replace(
-      /^https?:\/\/(localhost|127\.0\.0\.1):5000/i,
-      productionBackend
-    );
-  }
+    if (/^https?:\/\/(localhost|127\.0\.0\.1):5000\//i.test(image)) {
+      return image.replace(
+        /^https?:\/\/(localhost|127\.0\.0\.1):5000/i,
+        productionBackend
+      );
+    }
 
-  // Keep other complete image URLs unchanged.
-  if (/^https?:\/\//i.test(image)) {
-    return image;
-  }
+    if (/^https?:\/\//i.test(image)) {
+      return image;
+    }
 
-  // Relative image paths are served from Render.
-  return `${productionBackend}/${image.replace(/^\/+/, "")}`;
-};
-
-
-  const runSearch = () => {
-    setPage(1);
-    setSearchTrigger((current) => current + 1);
+    return `${productionBackend}/${image.replace(/^\/+/, "")}`;
   };
 
   const inputClass =
     "w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#3E000C] focus:ring-2 focus:ring-[#3E000C]/15";
+
   const labelClass = "mb-1.5 block text-sm font-medium text-stone-700";
 
   return (
@@ -276,20 +479,29 @@ const getImageUrl = (image?: string | null) => {
               <Heart className="h-4 w-4" />
               My wishlist ({favoriteIds.length})
             </Link>
+
+            {/* Messages with unread badge */}
             <Link
-              href="/user/messages/"
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFECD1]/40 px-5 py-2.5 text-sm font-semibold text-[#FFECD1] transition hover:bg-white/10"
+              href="/user/messages"
+              className="relative inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFECD1]/40 px-5 py-2.5 text-sm font-semibold text-[#FFECD1] transition hover:bg-white/10"
             >
               <MessageCircle className="h-4 w-4" />
               Messages
+
+              {unreadMessageCount > 0 && (
+                <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                  {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                </span>
+              )}
             </Link>
           </div>
         </section>
 
-        {/* Search bar */}
+        {/* Search */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+
             <input
               type="text"
               value={searchName}
@@ -329,28 +541,53 @@ const getImageUrl = (image?: string | null) => {
           <div className="mb-8 grid gap-4 rounded-xl border border-[#F5D8B3] bg-white p-5 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <label className={labelClass}>Category</label>
-              <input
-                type="text"
+
+              <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                placeholder="e.g. Tech, Music"
+                disabled={filterOptionsLoading}
                 className={inputClass}
-              />
+              >
+                <option value="">
+                  {filterOptionsLoading
+                    ? "Loading categories..."
+                    : "All Categories"}
+                </option>
+
+                {categoryOptions.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
               <label className={labelClass}>Location</label>
-              <input
-                type="text"
+
+              <select
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Kozhikode"
+                disabled={filterOptionsLoading}
                 className={inputClass}
-              />
+              >
+                <option value="">
+                  {filterOptionsLoading
+                    ? "Loading locations..."
+                    : "All Locations"}
+                </option>
+
+                {locationOptions.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
               <label className={labelClass}>Date</label>
+
               <input
                 type="date"
                 value={date}
@@ -361,6 +598,7 @@ const getImageUrl = (image?: string | null) => {
 
             <div>
               <label className={labelClass}>Min price (₹)</label>
+
               <input
                 type="number"
                 min="0"
@@ -373,6 +611,7 @@ const getImageUrl = (image?: string | null) => {
 
             <div>
               <label className={labelClass}>Max price (₹)</label>
+
               <input
                 type="number"
                 min="0"
@@ -394,14 +633,7 @@ const getImageUrl = (image?: string | null) => {
 
               <button
                 type="button"
-                onClick={() => {
-                  setCategory("");
-                  setLocation("");
-                  setDate("");
-                  setMinPrice("");
-                  setMaxPrice("");
-                  runSearch();
-                }}
+                onClick={clearFilters}
                 className="rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
               >
                 Clear all
@@ -410,16 +642,18 @@ const getImageUrl = (image?: string | null) => {
           </div>
         )}
 
-        {/* Section header */}
+        {/* Events heading */}
         <div className="mb-5 flex items-baseline justify-between">
           <h2 className="text-xl font-bold tracking-tight text-[#3E000C] sm:text-2xl">
             Upcoming events
           </h2>
+
           <span className="text-sm text-stone-600">
             Page {page} of {totalPages}
           </span>
         </div>
 
+        {/* Wishlist message */}
         {favoriteMessage && (
           <p
             role="status"
@@ -430,7 +664,7 @@ const getImageUrl = (image?: string | null) => {
           </p>
         )}
 
-        {/* Events */}
+        {/* Event list */}
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-20 text-stone-600">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -447,6 +681,7 @@ const getImageUrl = (image?: string | null) => {
         ) : events.length === 0 ? (
           <div className="rounded-xl border border-[#F5D8B3] bg-white p-12 text-center">
             <CalendarX2 className="mx-auto mb-3 h-8 w-8 text-[#3E000C]/60" />
+
             <p className="text-stone-600">
               No events match your search. Try changing or clearing the
               filters.
@@ -461,118 +696,122 @@ const getImageUrl = (image?: string | null) => {
                 const isUpdating = updatingFavoriteId === event._id;
 
                 return (
-              <article
-                key={event._id}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-[#F5D8B3] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-              >
-                {/* Larger event image */}
-                <div className="relative h-64 w-full overflow-hidden bg-stone-200 sm:h-72">
-                  {imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt={event.eventName}
-                      loading="lazy"
-                      className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                      onError={(e) => {
-                        console.error("Image failed:", imageUrl);
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-[#F5D8B3] text-sm text-[#3E000C]">
-                      No image available
-                    </div>
-                  )}
-
-                  {/* Dark overlay for better visual appearance */}
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-
-                  {/* Event category */}
-                  {event.category && (
-                    <span className="absolute left-3 top-3 rounded-full bg-[#3E000C] px-3 py-1.5 text-xs font-semibold text-[#FFECD1] shadow">
-                      {event.category}
-                    </span>
-                  )}
-
-                  {/* Ticket price */}
-                  <span className="absolute right-3 top-3 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-[#3E000C] shadow">
-                    {event.ticketPrice === undefined || event.ticketPrice === 0
-                      ? "Free"
-                      : `₹${event.ticketPrice}`}
-                  </span>
-
-                  {/* Wishlist button */}
-                  <button
-                    type="button"
-                    onClick={() => handleFavorite(event._id)}
-                    disabled={isUpdating}
-                    aria-label={
-                      isFavorite ? "Remove from wishlist" : "Add to wishlist"
-                    }
-                    aria-pressed={isFavorite}
-                    title={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
-                    className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg transition hover:scale-110 disabled:cursor-not-allowed disabled:opacity-50"
+                  <article
+                    key={event._id}
+                    className="group flex flex-col overflow-hidden rounded-2xl border border-[#F5D8B3] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
                   >
-                    <Heart
-                      className={`h-5 w-5 ${
-                        isFavorite
-                          ? "fill-red-600 text-red-600"
-                          : "text-stone-600"
-                      }`}
-                    />
-                  </button>
-                </div>
+                    {/* Image */}
+                    <div className="relative h-64 w-full overflow-hidden bg-stone-200 sm:h-72">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={event.eventName}
+                          loading="lazy"
+                          className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                          onError={(e) => {
+                            console.error("Image failed:", imageUrl);
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-[#F5D8B3] text-sm text-[#3E000C]">
+                          No image available
+                        </div>
+                      )}
 
-                {/* Event details */}
-                <div className="flex flex-1 flex-col gap-5 p-5 sm:p-6">
-                  <div className="space-y-3">
-                    <h3
-                      className="line-clamp-2 min-h-14 text-xl font-bold leading-7 text-[#3E000C]"
-                      title={event.eventName}
-                    >
-                      {event.eventName}
-                    </h3>
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
-                    <div className="flex flex-col gap-2.5 text-sm text-stone-600">
-                      <span className="flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4 shrink-0 text-[#3E000C]" />
-                        {new Date(event.date).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </span>
-
-                      {event.venue && (
-                        <span className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 shrink-0 text-[#3E000C]" />
-                          <span className="truncate" title={event.venue}>
-                            {event.venue}
-                          </span>
+                      {event.category && (
+                        <span className="absolute left-3 top-3 rounded-full bg-[#3E000C] px-3 py-1.5 text-xs font-semibold text-[#FFECD1] shadow">
+                          {event.category}
                         </span>
                       )}
+
+                      <span className="absolute right-3 top-3 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-[#3E000C] shadow">
+                        {event.ticketPrice === undefined ||
+                        event.ticketPrice === 0
+                          ? "Free"
+                          : `₹${event.ticketPrice}`}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => handleFavorite(event._id)}
+                        disabled={isUpdating}
+                        aria-label={
+                          isFavorite
+                            ? "Remove from wishlist"
+                            : "Add to wishlist"
+                        }
+                        aria-pressed={isFavorite}
+                        title={
+                          isFavorite
+                            ? "Remove from wishlist"
+                            : "Add to wishlist"
+                        }
+                        className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg transition hover:scale-110 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Heart
+                          className={`h-5 w-5 ${
+                            isFavorite
+                              ? "fill-red-600 text-red-600"
+                              : "text-stone-600"
+                          }`}
+                        />
+                      </button>
                     </div>
-                  </div>
 
-                  {/* Action buttons */}
-                  <div className="mt-auto grid grid-cols-2 gap-3 border-t border-stone-100 pt-4">
-                    <Link
-                      href={`/events/${event._id}`}
-                      className="flex min-h-11 items-center justify-center rounded-lg border border-[#3E000C] px-3 py-2.5 text-center text-sm font-semibold text-[#3E000C] transition hover:bg-[#3E000C]/5"
-                    >
-                      View details
-                    </Link>
+                    {/* Details */}
+                    <div className="flex flex-1 flex-col gap-5 p-5 sm:p-6">
+                      <div className="space-y-3">
+                        <h3
+                          className="line-clamp-2 min-h-14 text-xl font-bold leading-7 text-[#3E000C]"
+                          title={event.eventName}
+                        >
+                          {event.eventName}
+                        </h3>
 
-                    <Link
-                      href={`/events/${event._id}/book`}
-                      className="flex min-h-11 items-center justify-center rounded-lg bg-[#3E000C] px-3 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-[#2B0008]"
-                    >
-                      Book ticket
-                    </Link>
-                  </div>
-                </div>
-              </article>
+                        <div className="flex flex-col gap-2.5 text-sm text-stone-600">
+                          <span className="flex items-center gap-2">
+                            <CalendarDays className="h-4 w-4 shrink-0 text-[#3E000C]" />
 
+                            {new Date(event.date).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </span>
+
+                          {event.venue && (
+                            <span className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 shrink-0 text-[#3E000C]" />
+
+                              <span className="truncate" title={event.venue}>
+                                {event.venue}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Buttons */}
+                      <div className="mt-auto grid grid-cols-2 gap-3 border-t border-stone-100 pt-4">
+                        <Link
+                          href={`/events/${event._id}`}
+                          className="flex min-h-11 items-center justify-center rounded-lg border border-[#3E000C] px-3 py-2.5 text-center text-sm font-semibold text-[#3E000C] transition hover:bg-[#3E000C]/5"
+                        >
+                          View details
+                        </Link>
+
+                        <Link
+                          href={`/events/${event._id}/book`}
+                          className="flex min-h-11 items-center justify-center rounded-lg bg-[#3E000C] px-3 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-[#2B0008]"
+                        >
+                          Book ticket
+                        </Link>
+                      </div>
+                    </div>
+                  </article>
                 );
               })}
             </div>
@@ -581,7 +820,10 @@ const getImageUrl = (image?: string | null) => {
             {totalPages > 1 && (
               <div className="mt-10 flex flex-wrap items-center justify-center gap-4 pb-8">
                 <button
-                  onClick={() => setPage((current) => current - 1)}
+                  type="button"
+                  onClick={() =>
+                    setPage((current) => Math.max(1, current - 1))
+                  }
                   disabled={page === 1 || loading}
                   className="inline-flex items-center gap-1 rounded-lg border border-[#3E000C] bg-white px-4 py-2.5 text-sm font-semibold text-[#3E000C] transition hover:bg-[#3E000C]/5 disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -594,7 +836,12 @@ const getImageUrl = (image?: string | null) => {
                 </span>
 
                 <button
-                  onClick={() => setPage((current) => current + 1)}
+                  type="button"
+                  onClick={() =>
+                    setPage((current) =>
+                      Math.min(totalPages, current + 1)
+                    )
+                  }
                   disabled={page === totalPages || loading}
                   className="inline-flex items-center gap-1 rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-40"
                 >

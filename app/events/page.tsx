@@ -37,6 +37,72 @@ export default function EventsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Check whether an event has expired.
+  const isEventActive = (event: EventType) => {
+    const eventDate = new Date(event.date);
+
+    if (isNaN(eventDate.getTime())) {
+      return false;
+    }
+
+    const now = new Date();
+
+    // Get event date without time.
+    const eventDay = new Date(
+      eventDate.getFullYear(),
+      eventDate.getMonth(),
+      eventDate.getDate()
+    );
+
+    // Get today's date without time.
+    const today = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    // Hide events from previous dates.
+    if (eventDay < today) {
+      return false;
+    }
+
+    // Display events scheduled for future dates.
+    if (eventDay > today) {
+      return true;
+    }
+
+    // If the event has no time, display it until the end of today.
+    if (!event.time) {
+      return true;
+    }
+
+    // Extract event time (12-hour or 24-hour format).
+    const timeMatch = event.time.match(
+      /^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i
+    );
+
+    if (!timeMatch) {
+      return true;
+    }
+
+    let hours = Number(timeMatch[1]);
+    const minutes = Number(timeMatch[2]);
+    const period = timeMatch[3]?.toUpperCase();
+
+    // Convert 12-hour time into 24-hour time.
+    if (period === "PM" && hours !== 12) {
+      hours += 12;
+    } else if (period === "AM" && hours === 12) {
+      hours = 0;
+    }
+
+    const eventTime = new Date(eventDay);
+    eventTime.setHours(hours, minutes, 0, 0);
+
+    // Hide events if their start time has passed.
+    return eventTime > now;
+  };
+
   // Fetch events from the backend.
   useEffect(() => {
     const getAllEvents = async () => {
@@ -47,7 +113,7 @@ export default function EventsPage() {
         const response = await api.get("/events/getevent", {
           params: {
             page,
-            limit: 10,
+            limit: 9,
           },
         });
 
@@ -69,6 +135,8 @@ export default function EventsPage() {
 
         if (typeof pages === "number" && pages > 0) {
           setTotalPages(pages);
+        } else {
+          setTotalPages(1);
         }
       } catch (err: unknown) {
         setError(
@@ -102,17 +170,22 @@ export default function EventsPage() {
     community: ["community"],
   };
 
-  // Filter the events according to the selected category.
+  // Filter expired events first, then apply category filtering.
   const filteredEvents = useMemo(() => {
+    // Remove expired events.
+    const activeEvents = events.filter(isEventActive);
+
+    // Display all active events if no category is selected.
     if (!selectedCategory) {
-      return events;
+      return activeEvents;
     }
 
     const selected = selectedCategory.trim().toLowerCase();
 
     const matchingCategories = categoryAliases[selected] || [selected];
 
-    return events.filter((event) => {
+    // Apply category filtering.
+    return activeEvents.filter((event) => {
       const eventCategory = event.category?.trim().toLowerCase() || "";
 
       return matchingCategories.includes(eventCategory);
@@ -213,6 +286,7 @@ export default function EventsPage() {
   return (
     <div className="min-h-screen bg-[#FFECD1] px-4 py-6 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1]">
       <div className="mx-auto max-w-7xl">
+
         {/* Header */}
         <header className="mb-8 flex items-center justify-between border-b border-[#F5D8B3] pb-5">
           <Link href="/user/dashboard" className="flex items-center gap-3">
@@ -306,8 +380,8 @@ export default function EventsPage() {
 
             <p className="text-stone-600">
               {selectedCategory
-                ? `No events found in the ${selectedCategory} category on this page.`
-                : "There are no active events right now. Check back soon."}
+                ? `No upcoming events found in the ${selectedCategory} category.`
+                : "No upcoming events available right now. Check back soon."}
             </p>
 
             {selectedCategory && (
@@ -446,11 +520,13 @@ export default function EventsPage() {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
+            {!selectedCategory && totalPages > 1 && (
               <div className="mt-10 flex flex-wrap items-center justify-center gap-4 pb-8">
                 <button
                   type="button"
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  onClick={() =>
+                    setPage((current) => Math.max(1, current - 1))
+                  }
                   disabled={page === 1 || loading}
                   className="inline-flex items-center gap-1 rounded-lg border border-[#3E000C] bg-white px-4 py-2.5 text-sm font-semibold text-[#3E000C] transition hover:bg-[#3E000C]/5 disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -465,10 +541,12 @@ export default function EventsPage() {
                 <button
                   type="button"
                   onClick={() =>
-                    setPage((current) => Math.min(totalPages, current + 1))
+                    setPage((current) =>
+                      Math.min(totalPages, current + 1)
+                    )
                   }
                   disabled={page === totalPages || loading}
-                  className="inline-flex items-center gap-1 rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex items-center gap-1 rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3E000C]/5 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Next
                   <ChevronRight className="h-4 w-4" />

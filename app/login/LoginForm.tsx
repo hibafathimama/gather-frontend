@@ -152,77 +152,109 @@ export default function LoginPage() {
 
   const onInvalid = () => setShakeKey((k) => k + 1);
 
-  const onSubmit = async (data: LoginForm) => {
-    try {
-      setLoginError("");
+ const onSubmit = async (data: LoginForm) => {
+  try {
+    setLoginError("");
 
-      const result = await dispatch(loginUser(data)).unwrap();
+    // Call the Redux login function
+    const result = await dispatch(loginUser(data)).unwrap();
 
-      const token = result.accessToken;
-      const user = result.data;
+    // Get token and user details from backend response
+    const token = result.accessToken;
+    const user = result.data;
 
-      if (!token || !user || !user.role) {
-        throw new Error(
-          "Login response is missing the token or user details. Check the backend response."
-        );
-      }
+    // Debug: Check login response
+    console.log("Login result:", result);
+    console.log("User details:", user);
 
-      const role = user.role;
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-
-      const cookieResponse = await fetch("/api/auth/set-cookie", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ token, role }),
-      });
-
-      const cookieResult = await cookieResponse.json();
-
-      if (!cookieResponse.ok) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        throw new Error(
-          cookieResult.message || "Failed to set authentication cookies."
-        );
-      }
-
-      sessionStorage.setItem("tabAuthenticated", "true");
-
-      const destinations: Record<string, string> = {
-        organizer: "/organizer/dashboard",
-        admin: "/admin/dashboard",
-        user: "/user/dashboard",
-      };
-      const destination = destinations[role];
-
-      if (!destination) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        sessionStorage.removeItem("tabAuthenticated");
-        throw new Error("Invalid user role.");
-      }
-
-      /* Let the "ticket scanned" confirmation play before navigating. */
-      setSuccess(true);
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      router.replace(destination);
-    } catch (err: unknown) {
-      console.error("Login failed:", err);
-      setSuccess(false);
-      setShakeKey((k) => k + 1);
-
-      if (typeof err === "string") {
-        setLoginError(err);
-      } else if (err instanceof Error) {
-        setLoginError(err.message);
-      } else {
-        setLoginError("Login failed. Please try again.");
-      }
+    // Validate token and user details
+    if (!token || !user || !user.role) {
+      throw new Error(
+        "Login response is missing the token or user details."
+      );
     }
-  };
+
+    // Check user ID
+    if (!user._id) {
+      throw new Error(
+        "User ID is missing from the login response. Please check your backend login controller."
+      );
+    }
+
+    const role = user.role;
+
+    // Save token and user details
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+
+    // Verify saved user details
+    console.log(
+      "Saved user:",
+      JSON.parse(localStorage.getItem("user") || "null")
+    );
+
+    // Set authentication cookies
+    const cookieResponse = await fetch("/api/auth/set-cookie", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ token, role }),
+    });
+
+    const cookieResult = await cookieResponse.json();
+
+    if (!cookieResponse.ok) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+
+      throw new Error(
+        cookieResult.message || "Failed to set authentication cookies."
+      );
+    }
+
+    sessionStorage.setItem("tabAuthenticated", "true");
+
+    // Navigate according to user role
+    const destinations: Record<string, string> = {
+      organizer: "/organizer/dashboard",
+      admin: "/admin/dashboard",
+      user: "/user/dashboard",
+    };
+
+    const destination = destinations[role];
+
+    if (!destination) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      sessionStorage.removeItem("tabAuthenticated");
+
+      throw new Error("Invalid user role.");
+    }
+
+    // Show success animation
+    setSuccess(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 900));
+
+    router.replace(destination);
+
+  } catch (err: unknown) {
+    console.error("Login failed:", err);
+
+    setSuccess(false);
+    setShakeKey((k) => k + 1);
+
+    if (typeof err === "string") {
+      setLoginError(err);
+    } else if (err instanceof Error) {
+      setLoginError(err.message);
+    } else {
+      setLoginError("Login failed. Please try again.");
+    }
+  }
+};
 
   const inputClass = (hasError: boolean) =>
     `peer w-full rounded-lg border bg-white py-2.5 pl-10 pr-10 text-sm text-stone-900 outline-none transition-all duration-200 placeholder:text-stone-400 hover:border-stone-300 focus:border-[#8C3544] focus:shadow-[0_0_0_3px_rgba(140,53,68,0.1)] ${

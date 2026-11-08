@@ -1,18 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import {
-  Ticket,
-  ArrowLeft,
-  Bell,
-  BellOff,
-  CalendarDays,
-  Check,
-  CheckCheck,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
+
+interface NotificationSender {
+  _id: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+}
 
 interface NotificationType {
   _id: string;
@@ -20,6 +15,7 @@ interface NotificationType {
   type: string;
   isRead: boolean;
   createdAt: string;
+  sender?: NotificationSender | null;
 }
 
 export default function NotificationsPage() {
@@ -28,257 +24,336 @@ export default function NotificationsPage() {
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  const backendUrl = (
+    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api"
+  ).replace(/\/$/, "");
+
+  // Fetch notifications
   const fetchNotifications = useCallback(async () => {
     try {
+      setLoading(true);
       setError("");
 
       const token = localStorage.getItem("token");
 
       if (!token) {
-        setError("Please log in to view your notifications.");
+        setError("Please login to view your notifications.");
         return;
       }
-
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
       const response = await fetch(`${backendUrl}/notifications`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         cache: "no-store",
       });
 
       const result = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to fetch notifications");
+      console.log("Notifications API response:", result);
+
+      if (!response.ok || result.status === false) {
+        throw new Error(
+          result.message || "Unable to fetch notifications."
+        );
       }
 
-      setNotifications(result.data || []);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      // IMPORTANT:
+      // Your backend sends notifications inside result.data
+      const notificationList = Array.isArray(result.data)
+        ? result.data
+        : [];
+
+      setNotifications(notificationList);
+    } catch (err) {
+      console.error("Notification error:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong."
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [backendUrl]);
 
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  const handleMarkAsRead = async (notificationId: string) => {
+  // Get sender name
+  const getSenderName = (notification: NotificationType) => {
+    const sender = notification.sender;
+
+    if (!sender) {
+      return "System";
+    }
+
+    if (sender.role?.toLowerCase() === "admin") {
+      return "Admin";
+    }
+
+    const fullName = `${sender.firstName || ""} ${
+      sender.lastName || ""
+    }`.trim();
+
+    return fullName || "Organizer";
+  };
+
+  // Get sender role
+  const getSenderRole = (notification: NotificationType) => {
+    const role = notification.sender?.role?.toLowerCase();
+
+    if (role === "admin") return "Administrator";
+    if (role === "organizer") return "Event Organizer";
+
+    return "System Notification";
+  };
+
+  // Mark notification as read
+  const handleMarkAsRead = async (id: string) => {
     try {
-      setUpdatingId(notificationId);
+      setUpdatingId(id);
 
       const token = localStorage.getItem("token");
 
       if (!token) {
-        setError("Please log in to continue.");
+        setError("Please login again.");
         return;
       }
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-
       const response = await fetch(
-        `${backendUrl}/notifications/${notificationId}/read`,
+        `${backendUrl}/notifications/${id}/read`,
         {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
         }
       );
 
       const result = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to mark as read");
+      if (!response.ok || result.status === false) {
+        throw new Error(
+          result.message || "Failed to update notification."
+        );
       }
 
-      setNotifications((currentNotifications) =>
-        currentNotifications.map((notification) =>
-          notification._id === notificationId
+      setNotifications((previous) =>
+        previous.map((notification) =>
+          notification._id === id
             ? { ...notification, isRead: true }
             : notification
         )
       );
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+    } catch (err) {
+      console.error("Mark as read error:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to update notification."
+      );
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  // Format date
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const unreadCount = notifications.filter(
     (notification) => !notification.isRead
   ).length;
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FFECD1] text-[#3E000C]">
-        <p className="flex items-center gap-2 font-medium">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Loading notifications...
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <main className="min-h-screen bg-[#FFECD1] px-4 py-6 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1] sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-3xl">
+    <div className="min-h-screen bg-[#F8F7F4] px-4 py-10 sm:px-6">
+      <div className="mx-auto max-w-4xl">
+
         {/* Header */}
-        <header className="mb-8 flex items-center justify-between border-b border-[#F5D8B3] pb-5">
-          <Link href="/user/dashboard" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3E000C] text-[#FFECD1]">
-              <Ticket className="h-5 w-5" />
-            </div>
-            <div className="leading-tight">
-              <p className="text-lg font-bold tracking-tight text-[#3E000C]">
-                Gather
-              </p>
-              <p className="text-xs text-stone-600">Event platform</p>
-            </div>
-          </Link>
-
-          <Link
-            href="/user/dashboard"
-            className="flex h-10 items-center gap-2 rounded-lg border border-[#3E000C]/25 bg-white px-3.5 text-sm font-medium text-[#3E000C] transition-colors hover:bg-[#3E000C] hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Dashboard</span>
-          </Link>
-        </header>
-
-        {/* Page title */}
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#3E000C] sm:text-3xl">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-[#A16B45]">
+              Stay Updated
+            </p>
+
+            <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
               Notifications
             </h1>
-            <p className="mt-1 text-sm text-stone-600 sm:text-base">
-              Stay up to date with your bookings and event updates.
+
+            <p className="mt-2 text-sm text-gray-500">
+              All your latest updates and announcements in one place.
             </p>
           </div>
 
-          {notifications.length > 0 && (
-            <span className="inline-flex items-center gap-2 rounded-lg border border-[#F5D8B3] bg-white px-3 py-1.5 text-sm font-medium text-[#3E000C]">
-              <Bell className="h-4 w-4" />
-              {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
-            </span>
-          )}
+          <button
+            onClick={fetchNotifications}
+            className="w-fit rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
+          >
+            ↻ Refresh
+          </button>
         </div>
 
+        {/* Summary Cards */}
+        <div className="mb-8 grid grid-cols-2 gap-4">
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-500">
+              Total Notifications
+            </p>
+
+            <h2 className="mt-2 text-3xl font-bold text-gray-900">
+              {notifications.length}
+            </h2>
+          </div>
+
+          <div className="rounded-xl border border-orange-100 bg-orange-50 p-5 shadow-sm">
+            <p className="text-sm text-orange-700">
+              Unread Notifications
+            </p>
+
+            <h2 className="mt-2 text-3xl font-bold text-orange-800">
+              {unreadCount}
+            </h2>
+          </div>
+        </div>
+
+        {/* Error Message */}
         {error && (
-          <div
-            role="alert"
-            className="mb-6 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
-          >
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        {notifications.length === 0 ? (
-          <div className="rounded-xl border border-[#F5D8B3] bg-white p-12 text-center">
-            <span className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-xl bg-[#FFECD1] text-[#3E000C]">
-              <BellOff className="h-7 w-7" />
-            </span>
-            <h2 className="text-lg font-semibold text-[#3E000C]">
+        {/* Loading */}
+        {loading ? (
+          <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
+            <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-4 border-gray-200 border-t-[#8B4513]" />
+
+            <p className="text-sm text-gray-500">
+              Loading your notifications...
+            </p>
+          </div>
+        ) : notifications.length === 0 ? (
+          /* Empty State */
+          <div className="rounded-2xl border border-gray-200 bg-white px-6 py-16 text-center shadow-sm">
+            <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-orange-50 text-4xl">
+              🔔
+            </div>
+
+            <h2 className="text-xl font-bold text-gray-900">
               No notifications yet
             </h2>
-            <p className="mt-1.5 text-sm text-stone-600">
-              Updates about your bookings and events will show up here.
+
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-500">
+              You don't have any notifications right now. New updates
+              and announcements will appear here.
             </p>
           </div>
         ) : (
-          <ul className="space-y-3">
-            {notifications.map((notification) => (
-              <li
-                key={notification._id}
-                className={`flex gap-4 rounded-xl border p-5 transition-colors ${
-                  notification.isRead
-                    ? "border-stone-200 bg-white"
-                    : "border-[#3E000C]/30 bg-white shadow-sm"
-                }`}
-              >
-                <span
-                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${
-                    notification.isRead
-                      ? "bg-stone-100 text-stone-500"
-                      : "bg-[#3E000C] text-[#FFECD1]"
-                  }`}
-                >
-                  <Bell className="h-5 w-5" />
-                </span>
+          /* Notification List */
+          <div>
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-800">
+                Recent Activity
+              </h2>
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <p
-                      className={`text-base ${
-                        notification.isRead
-                          ? "text-stone-700"
-                          : "font-semibold text-[#3E000C]"
-                      }`}
-                    >
-                      {notification.message}
-                    </p>
+              <span className="text-sm text-gray-500">
+                {notifications.length} notifications
+              </span>
+            </div>
 
-                    {!notification.isRead && (
-                      <span
-                        className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-[#3E000C]"
-                        title="Unread"
-                        aria-label="Unread"
-                      />
-                    )}
+            <div className="space-y-4">
+              {notifications.map((notification) => {
+                const senderName = getSenderName(notification);
+                const senderRole = getSenderRole(notification);
+
+                return (
+                  <div
+                    key={notification._id}
+                    className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md sm:p-6 ${
+                      !notification.isRead
+                        ? "border-l-4 border-l-[#A16B45] border-y-gray-200 border-r-gray-200"
+                        : "border-gray-200"
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+
+                      {/* Sender Avatar */}
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F3E9DF] text-lg font-bold text-[#8B4513]">
+                        {senderName.charAt(0).toUpperCase()}
+                      </div>
+
+                      {/* Notification Content */}
+                      <div className="min-w-0 flex-1">
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-bold text-gray-900">
+                            {senderName}
+                          </h3>
+
+                          {!notification.isRead && (
+                            <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-700">
+                              New
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-1 text-xs font-medium text-[#A16B45]">
+                          {senderRole}
+                        </p>
+
+                        {/* Message */}
+                        <p className="mt-3 text-sm leading-6 text-gray-700">
+                          {notification.message}
+                        </p>
+
+                        {/* Type and Date */}
+                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                          <span className="rounded-md bg-gray-100 px-3 py-1 text-xs font-medium capitalize text-gray-600">
+                            {notification.type.replace(/_/g, " ")}
+                          </span>
+
+                          <span className="text-xs text-gray-400">
+                            {formatDate(notification.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Mark as Read */}
+                      {!notification.isRead && (
+                        <button
+                          onClick={() =>
+                            handleMarkAsRead(notification._id)
+                          }
+                          disabled={updatingId === notification._id}
+                          className="shrink-0 rounded-lg bg-[#8B4513] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#6B3410] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {updatingId === notification._id
+                            ? "Updating..."
+                            : "Mark read"}
+                        </button>
+                      )}
+                    </div>
                   </div>
-
-                  <p className="mt-1.5 flex items-center gap-1.5 text-sm text-stone-500">
-                    <CalendarDays className="h-4 w-4" />
-                    {new Date(notification.createdAt).toLocaleString("en-IN")}
-                  </p>
-
-                  <div className="mt-3 flex items-center">
-                    {!notification.isRead ? (
-                      <button
-                        type="button"
-                        onClick={() => handleMarkAsRead(notification._id)}
-                        disabled={updatingId === notification._id}
-                        className="inline-flex items-center gap-2 rounded-lg bg-[#3E000C] px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-[#2B0008] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {updatingId === notification._id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Check className="h-4 w-4" />
-                        )}
-                        {updatingId === notification._id
-                          ? "Marking as read..."
-                          : "Mark as read"}
-                      </button>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-sm text-stone-500">
-                        <CheckCheck className="h-4 w-4" />
-                        Read
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+                );
+              })}
+            </div>
+          </div>
         )}
-
-        <div className="mt-8">
-          <Link
-            href="/user/dashboard"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#3E000C] hover:underline"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to dashboard
-          </Link>
-        </div>
       </div>
-    </main>
+    </div>
   );
 }

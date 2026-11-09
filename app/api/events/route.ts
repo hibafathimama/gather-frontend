@@ -1,10 +1,9 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    // Read token from the incoming request cookies
+    const token = request.cookies.get("token")?.value;
 
     if (!token) {
       return NextResponse.json(
@@ -22,12 +21,11 @@ export async function GET(request: Request) {
       );
     }
 
-    // Read search parameters from the frontend request
+    // Read search parameters
     const { searchParams } = new URL(request.url);
-
-    // Forward the parameters to the backend
     const queryString = searchParams.toString();
 
+    // Forward request to backend
     const response = await fetch(
       `${backendUrl}/events/getevent${queryString ? `?${queryString}` : ""}`,
       {

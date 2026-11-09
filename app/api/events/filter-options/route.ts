@@ -1,12 +1,21 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    // Read token from the incoming request cookies
+    const token = request.cookies.get("token")?.value;
 
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+    if (!backendUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Backend URL is not configured.",
+        },
+        { status: 500 }
+      );
+    }
 
     const response = await fetch(
       `${backendUrl}/events/filter-options`,

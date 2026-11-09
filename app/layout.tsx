@@ -47,7 +47,9 @@ export default function RootLayout({
             </TabAuthGuard>
           </Suspense>
         </ReduxProvider>
-        <ConditionalFooter />
+<Suspense fallback={null}>
+  <ConditionalFooter />
+</Suspense>
       </body>
     </html>
   );

@@ -16,6 +16,10 @@ import {
   AlertCircle,
   RefreshCw,
   TicketX,
+  CheckCircle2,
+  XCircle,
+  Wallet,
+  Hourglass,
 } from "lucide-react";
 
 interface EventDetails {
@@ -38,6 +42,11 @@ interface Booking {
   quantity: number;
   totalPrice?: number;
   status?: string;
+  paymentStatus?: string;
+  refundStatus?: string;
+  refundAmount?: number;
+  razorpayRefundId?: string | null;
+  refundRequestedAt?: string | null;
   createdAt?: string;
   event?: EventDetails | null;
 }
@@ -52,7 +61,7 @@ const backendUrl = (
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api"
 ).replace(/\/+$/, "");
 
-const imageBaseUrl = backendUrl.replace(/\/api$/, "");
+const imageBaseUrl = backendUrl.replace(/\/api\/?$/, "");
 
 function formatDate(date?: string) {
   if (!date) return "Date unavailable";
@@ -92,6 +101,42 @@ function getImageUrl(image?: string) {
   return `${imageBaseUrl}/${image.replace(/^\/+/, "")}`;
 }
 
+function getRefundDetails(refundStatus?: string) {
+  switch (refundStatus?.toLowerCase()) {
+    case "processed":
+      return {
+        label: "Refund Successful",
+        description: "Your refund has been successfully processed.",
+        icon: CheckCircle2,
+        style: "bg-emerald-50 border-emerald-200 text-emerald-800",
+        iconStyle: "text-emerald-600",
+      };
+
+    case "pending":
+    case "initiating":
+      return {
+        label: "Refund Processing",
+        description: "Your refund is being processed by Razorpay.",
+        icon: Hourglass,
+        style: "bg-amber-50 border-amber-200 text-amber-800",
+        iconStyle: "text-amber-600",
+      };
+
+    case "failed":
+      return {
+        label: "Refund Failed",
+        description:
+          "Your refund could not be processed. Please contact support.",
+        icon: XCircle,
+        style: "bg-red-50 border-red-200 text-red-800",
+        iconStyle: "text-red-600",
+      };
+
+    default:
+      return null;
+  }
+}
+
 export default function MyBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,13 +152,18 @@ export default function MyBookingsPage() {
 
         const token = localStorage.getItem("token");
 
-        const response = await fetch(`${backendUrl}/bookings/getmybookings`, {
-          method: "GET",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          credentials: "include",
-          cache: "no-store",
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `${backendUrl}/bookings/getmybookings`,
+          {
+            method: "GET",
+            headers: token
+              ? { Authorization: `Bearer ${token}` }
+              : {},
+            credentials: "include",
+            cache: "no-store",
+            signal: controller.signal,
+          }
+        );
 
         const contentType = response.headers.get("content-type") || "";
 
@@ -126,7 +176,9 @@ export default function MyBookingsPage() {
         const result: ApiResponse = await response.json();
 
         if (!response.ok) {
-          throw new Error(result.message || "Failed to fetch your bookings.");
+          throw new Error(
+            result.message || "Failed to fetch your bookings."
+          );
         }
 
         const bookingData = Array.isArray(result.data)
@@ -174,17 +226,21 @@ export default function MyBookingsPage() {
   return (
     <main className="min-h-screen bg-[#FFECD1] px-4 py-6 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1] sm:px-8">
       <div className="mx-auto max-w-5xl">
+
         {/* Header */}
         <header className="mb-8 flex items-center justify-between border-b border-[#F5D8B3] pb-5">
           <Link href="/user/dashboard" className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3E000C] text-[#FFECD1]">
               <Ticket className="h-5 w-5" />
             </div>
+
             <div className="leading-tight">
               <p className="text-lg font-bold tracking-tight text-[#3E000C]">
                 Gather
               </p>
-              <p className="text-xs text-stone-600">Event platform</p>
+              <p className="text-xs text-stone-600">
+                Event platform
+              </p>
             </div>
           </Link>
 
@@ -193,12 +249,14 @@ export default function MyBookingsPage() {
             className="flex h-10 items-center gap-2 rounded-lg bg-[#3E000C] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#2B0008]"
           >
             <Compass className="h-4 w-4" />
-            <span className="hidden sm:inline">Explore events</span>
+            <span className="hidden sm:inline">
+              Explore events
+            </span>
           </Link>
         </header>
 
-        {/* Page title */}
-                <div className="mt-8">
+        {/* Back button */}
+        <div className="mt-8">
           <Link
             href="/user/dashboard"
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#3E000C] hover:underline"
@@ -207,16 +265,21 @@ export default function MyBookingsPage() {
             Back to dashboard
           </Link>
         </div>
+
         <br />
+
+        {/* Page title */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-[#3E000C] sm:text-3xl">
             My bookings
           </h1>
+
           <p className="mt-1 text-sm text-stone-600 sm:text-base">
-            View your booked events and ticket details.
+            View your booked events, ticket details and refund status.
           </p>
         </div>
 
+        {/* Error message */}
         {error && (
           <div
             role="alert"
@@ -226,6 +289,7 @@ export default function MyBookingsPage() {
               <AlertCircle className="h-4 w-4 shrink-0" />
               Unable to load bookings
             </p>
+
             <p className="mt-1 text-sm">{error}</p>
 
             <button
@@ -239,6 +303,7 @@ export default function MyBookingsPage() {
           </div>
         )}
 
+        {/* Empty bookings */}
         {!error && bookings.length === 0 && (
           <div className="rounded-xl border border-[#F5D8B3] bg-white p-12 text-center">
             <span className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-xl bg-[#FFECD1] text-[#3E000C]">
@@ -250,8 +315,8 @@ export default function MyBookingsPage() {
             </h2>
 
             <p className="mx-auto mt-1.5 max-w-sm text-sm text-stone-600">
-              You haven&apos;t booked any events yet. Find an event you like and
-              book your first ticket.
+              You haven&apos;t booked any events yet. Find an event you like
+              and book your first ticket.
             </p>
 
             <Link
@@ -264,6 +329,7 @@ export default function MyBookingsPage() {
           </div>
         )}
 
+        {/* Booking list */}
         {!error && bookings.length > 0 && (
           <div className="space-y-5">
             {bookings.map((booking) => {
@@ -272,12 +338,18 @@ export default function MyBookingsPage() {
               const isCancelled =
                 booking.status?.toLowerCase() === "cancelled";
 
+              const refundDetails = getRefundDetails(
+                booking.refundStatus
+              );
+
               return (
                 <article
                   key={booking._id}
                   className="overflow-hidden rounded-xl border border-[#F5D8B3] bg-white shadow-sm transition-shadow hover:shadow-md"
                 >
                   <div className="flex flex-col gap-5 p-5 sm:flex-row">
+
+                    {/* Event image */}
                     {imageUrl ? (
                       <img
                         src={imageUrl}
@@ -294,6 +366,8 @@ export default function MyBookingsPage() {
                     )}
 
                     <div className="flex min-w-0 flex-1 flex-col gap-4">
+
+                      {/* Event title and booking status */}
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <h2 className="text-lg font-semibold text-[#3E000C] sm:text-xl">
                           {booking.event?.eventName ||
@@ -301,19 +375,24 @@ export default function MyBookingsPage() {
                         </h2>
 
                         <span
-                          className={`rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${
+                          className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
                             isCancelled
                               ? "bg-red-100 text-red-800"
                               : "bg-emerald-100 text-emerald-800"
                           }`}
                         >
-                          {booking.status || "Booked"}
+                          {isCancelled
+                            ? "Booking Cancelled"
+                            : "Booking Confirmed"}
                         </span>
                       </div>
 
+                      {/* Booking details */}
                       <ul className="grid gap-2 text-sm text-stone-600 sm:grid-cols-2">
+
                         <li className="flex items-center gap-2 break-all sm:col-span-2">
                           <Hash className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
+
                           <span>
                             <span className="font-medium text-stone-900">
                               Reference:
@@ -334,10 +413,12 @@ export default function MyBookingsPage() {
                           </li>
                         )}
 
-                        {(booking.event?.venue || booking.event?.location) && (
+                        {(booking.event?.venue ||
+                          booking.event?.location) && (
                           <li className="flex items-center gap-2 sm:col-span-2">
                             <MapPin className="h-4 w-4 shrink-0 text-[#3E000C]/70" />
-                            {booking.event.venue || booking.event.location}
+                            {booking.event.venue ||
+                              booking.event.location}
                           </li>
                         )}
 
@@ -352,21 +433,93 @@ export default function MyBookingsPage() {
                         </li>
                       </ul>
 
+                      {/* Refund information */}
+                      {isCancelled && (
+                        <div
+                          className={`rounded-lg border p-4 ${
+                            refundDetails?.style ||
+                            "border-stone-200 bg-stone-50 text-stone-700"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {refundDetails ? (
+                              <refundDetails.icon
+                                className={`h-5 w-5 shrink-0 ${refundDetails.iconStyle}`}
+                              />
+                            ) : (
+                              <Wallet className="h-5 w-5 shrink-0" />
+                            )}
+
+                            <h3 className="font-semibold">
+                              {refundDetails?.label ||
+                                "Refund information unavailable"}
+                            </h3>
+                          </div>
+
+                          <p className="mt-2 text-sm">
+                            {refundDetails?.description ||
+                              "Please contact support for refund information."}
+                          </p>
+
+                          <div className="mt-3 space-y-2 border-t border-current/10 pt-3 text-sm">
+
+                            <div className="flex justify-between gap-3">
+                              <span>Refund amount</span>
+                              <span className="font-bold">
+                                {formatPrice(booking.refundAmount)}
+                              </span>
+                            </div>
+
+                            {booking.razorpayRefundId && (
+                              <div className="flex flex-col gap-1">
+                                <span>Refund ID</span>
+                                <span className="break-all font-medium">
+                                  {booking.razorpayRefundId}
+                                </span>
+                              </div>
+                            )}
+
+                            {booking.refundRequestedAt && (
+                              <div className="flex justify-between gap-3">
+                                <span>Requested on</span>
+                                <span className="font-medium">
+                                  {formatDate(
+                                    booking.refundRequestedAt
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Price and ticket button */}
                       <div className="mt-auto flex flex-wrap items-center justify-between gap-4 border-t border-stone-100 pt-4">
                         <div>
-                          <p className="text-xs text-stone-500">Total paid</p>
+                          <p className="text-xs text-stone-500">
+                            {isCancelled ? "Booking amount" : "Total paid"}
+                          </p>
+
                           <p className="text-lg font-bold text-[#3E000C]">
                             {formatPrice(booking.totalPrice)}
                           </p>
                         </div>
 
-                        <Link
-                          href={`/user/bookings/${booking._id}`}
-                          className="inline-flex items-center gap-2 rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
-                        >
-                          <QrCode className="h-4 w-4" />
-                          View ticket
-                        </Link>
+                        {!isCancelled && (
+                          <Link
+                            href={`/user/bookings/${booking._id}`}
+                            className="inline-flex items-center gap-2 rounded-lg bg-[#3E000C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2B0008]"
+                          >
+                            <QrCode className="h-4 w-4" />
+                            View ticket
+                          </Link>
+                        )}
+
+                        {isCancelled && (
+                          <span className="text-sm font-medium text-red-700">
+                            Ticket cancelled
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -375,8 +528,6 @@ export default function MyBookingsPage() {
             })}
           </div>
         )}
-
-
       </div>
     </main>
   );

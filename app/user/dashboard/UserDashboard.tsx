@@ -186,11 +186,15 @@ export default function UserDashboard() {
           cache: "no-store",
         });
 
-        const result = await response.json();
+const result = await response.json();
 
-        if (!response.ok) {
-          throw new Error(result.message || "Failed to fetch events.");
-        }
+console.log("Events API URL:", response.url);
+console.log("Events API Status:", response.status);
+console.log("Events API Response:", result);
+
+if (!response.ok) {
+  throw new Error(result.error || result.message || "Failed to fetch events.");
+}
 
         if (!isMounted) return;
 

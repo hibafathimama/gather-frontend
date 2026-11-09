@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import ReduxProvider from "@/redux/ReduxProvider";
 import TabAuthGuard from "@/components/TabAuthGuard";
 import { Suspense } from "react";
+import ConditionalFooter from "@/components/ConditionalFooter";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -36,12 +37,17 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="flex min-h-screen flex-col">
         <ReduxProvider>
           <Suspense fallback={<div>Loading...</div>}>
-            <TabAuthGuard>{children}</TabAuthGuard>
+            <TabAuthGuard>
+              <main className="flex-1">
+                {children}
+              </main>
+            </TabAuthGuard>
           </Suspense>
         </ReduxProvider>
+        <ConditionalFooter />
       </body>
     </html>
   );

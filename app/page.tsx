@@ -284,7 +284,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[#F5D8B3] bg-white">
+      {/* <footer className="border-t border-[#F5D8B3] bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-8 sm:px-8 md:flex-row md:items-center md:justify-between">
           <Link href="/" className="text-2xl font-extrabold">
             Gather<span className="text-orange-700">.</span>
@@ -310,7 +310,7 @@ export default function HomePage() {
         <div className="border-t border-[#F5D8B3] px-5 py-4 text-center text-xs text-stone-500">
             © 2026 Gather. All rights reserved.
         </div>
-      </footer>
+      </footer> */}
     </main>
   );
 }

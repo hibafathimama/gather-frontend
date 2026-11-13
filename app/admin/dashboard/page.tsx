@@ -17,6 +17,7 @@ import {
   CalendarDays,
   ClipboardList,
   FileText,
+  MessageCircle,
 } from "lucide-react";
 import api from "@/lib/api";
 import AdminNavbar from "@/components/AdminNavbar";
@@ -65,6 +66,37 @@ export default function AdminDashboard() {
   const [announcement, setAnnouncement] = useState("");
   const [announcementMessage, setAnnouncementMessage] = useState("");
   const [announcementLoading, setAnnouncementLoading] = useState(false);
+
+  // Unread admin-organizer messages count
+  const [adminUnreadCount, setAdminUnreadCount] = useState(0);
+
+  // Fetch unread admin messages count
+  useEffect(() => {
+    const fetchAdminUnreadCount = async () => {
+      try {
+        const response = await api.get(
+          "/messages/admin-organizer/admin/unread-count",
+          {
+            withCredentials: true,
+          }
+        );
+
+        setAdminUnreadCount(response.data.unreadCount || 0);
+      } catch (error) {
+        console.error(
+          "Failed to fetch admin unread messages:",
+          error
+        );
+      }
+    };
+
+    fetchAdminUnreadCount();
+
+    // Refresh unread count every 15 seconds
+    const interval = setInterval(fetchAdminUnreadCount, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Count pending organizer requests
   const pendingOrganizerCount = notifications.filter(
@@ -286,19 +318,37 @@ export default function AdminDashboard() {
         <div className="mx-auto max-w-7xl">
 
           {/* Header Section */}
-          <div className="mb-8 border-b border-[#F5D8B3] pb-6">
-            <span className="mb-1 inline-block rounded-lg bg-[#3E000C]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#3E000C]">
-              Super Admin Control Center
-            </span>
+          <div className="mb-8 flex flex-col justify-between gap-5 border-b border-[#F5D8B3] pb-6 sm:flex-row sm:items-center">
+            <div>
+              <span className="mb-1 inline-block rounded-lg bg-[#3E000C]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#3E000C]">
+                Super Admin Control Center
+              </span>
 
-            <h1 className="editorial-heading text-4xl font-bold tracking-tight text-[#3E000C] sm:text-5xl">
-              Admin Dashboard
-            </h1>
+              <h1 className="editorial-heading text-4xl font-bold tracking-tight text-[#3E000C] sm:text-5xl">
+                Admin Dashboard
+              </h1>
 
-            <p className="mt-1 text-sm text-stone-600">
-              Manage platform users, verify organizers, review events, and
-              broadcast announcements.
-            </p>
+              <p className="mt-1 text-sm text-stone-600">
+                Manage platform users, verify organizers, review events, and
+                broadcast announcements.
+              </p>
+            </div>
+
+            {/* Messages Button with Unread Count */}
+            <Link
+              href="/admin/messages"
+              className="relative inline-flex items-center justify-center gap-2 self-start rounded-xl bg-[#3E000C] px-5 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#2B0008] sm:self-center"
+            >
+              <MessageCircle className="h-5 w-5" />
+
+              Messages
+
+              {adminUnreadCount > 0 && (
+                <span className="absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-[#FFECD1] bg-red-600 px-1.5 text-xs font-bold text-white shadow-md">
+                  {adminUnreadCount > 9 ? "9+" : adminUnreadCount}
+                </span>
+              )}
+            </Link>
           </div>
 
           {/* Stats Cards Grid */}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import {
   LayoutDashboard,
   Compass,
@@ -95,13 +96,17 @@ export default function UserNavbar() {
     } finally {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      router.push("/login");
+
+      toast.success("Logged out successfully!");
+
+      setTimeout(() => {
+        router.replace("/login");
+      }, 500);
     }
   };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#F5D8B3] bg-white/95 backdrop-blur">
-
       <nav className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:px-6 lg:px-8">
 
         {/* Brand */}
@@ -179,7 +184,6 @@ export default function UserNavbar() {
 
       {/* Mobile navigation */}
       <div className="grid grid-cols-2 gap-2 border-t border-stone-100 bg-[#FFECD1]/30 px-4 py-3 md:hidden">
-
         {navLinks.map(({ name, href, Icon }) => {
           const isActive = pathname === href;
 
@@ -199,7 +203,6 @@ export default function UserNavbar() {
             </Link>
           );
         })}
-
       </div>
     </header>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import {
   Ticket,
   Compass,
@@ -413,11 +414,13 @@ export default function BookEvent({
               );
             }
 
-            setBookingDetails(verifyResult.data);
+          setBookingDetails(verifyResult.data);
 
-            setMessage(
-              "Payment verified and booking confirmed!"
-            );
+          setMessage("Payment verified and booking confirmed!");
+
+          toast.success("Booking successful! Your ticket is confirmed.", {
+            duration: 4000,
+          });
 
           } catch (error) {
             setMessage(

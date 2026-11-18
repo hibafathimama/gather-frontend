@@ -4,6 +4,7 @@ import ReduxProvider from "@/redux/ReduxProvider";
 import TabAuthGuard from "@/components/TabAuthGuard";
 import { Suspense } from "react";
 import ConditionalFooter from "@/components/ConditionalFooter";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -47,9 +48,38 @@ export default function RootLayout({
             </TabAuthGuard>
           </Suspense>
         </ReduxProvider>
-<Suspense fallback={null}>
-  <ConditionalFooter />
-</Suspense>
+
+        <Suspense fallback={null}>
+          <ConditionalFooter />
+        </Suspense>
+
+        {/* React Hot Toast */}
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: "#3E000C",
+              color: "#FFF9F2",
+              borderRadius: "10px",
+              padding: "12px 16px",
+              fontSize: "14px",
+            },
+            success: {
+              iconTheme: {
+                primary: "#22C55E",
+                secondary: "#FFF9F2",
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: "#EF4444",
+                secondary: "#FFF9F2",
+              },
+            },
+          }}
+        />
       </body>
     </html>
   );

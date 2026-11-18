@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import { UserRound, LogOut, Bell, Ticket } from "lucide-react";
 
 export default function OrganizerHeader() {
@@ -56,10 +57,14 @@ export default function OrganizerHeader() {
       });
     } catch (error) {
       console.error("Could not clear authentication cookie:", error);
-    }
+    } finally {
+      toast.success("Logged out successfully!");
 
-    router.push("/login");
-    router.refresh();
+      setTimeout(() => {
+        router.replace("/login");
+        router.refresh();
+      }, 500);
+    }
   };
 
   const iconButtonClass = (href: string) =>

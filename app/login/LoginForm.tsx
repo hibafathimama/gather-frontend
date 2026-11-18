@@ -7,6 +7,7 @@ import * as yup from "yup";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
+import toast from "react-hot-toast";
 import {
   Ticket,
   Mail,
@@ -233,12 +234,14 @@ export default function LoginPage() {
       throw new Error("Invalid user role.");
     }
 
-    // Show success animation
-    setSuccess(true);
+  // Show success animation and toast
+  setSuccess(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 900));
+  toast.success("Login successful! Welcome to Gather.");
 
-    router.replace(destination);
+  await new Promise((resolve) => setTimeout(resolve, 900));
+
+  router.replace(destination);
 
   } catch (err: unknown) {
     console.error("Login failed:", err);

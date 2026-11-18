@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import {
   CalendarPlus,
   ArrowLeft,
@@ -162,17 +163,24 @@ export default function CreateEventPage() {
         throw new Error(result.message || "Failed to create event.");
       }
 
-      alert("Event created successfully!");
+    toast.success("Event created successfully!", {
+      duration: 4000,
+    });
 
+    setTimeout(() => {
       router.push("/organizer/dashboard");
       router.refresh();
+    }, 500);
+
     } catch (err: unknown) {
-      setError(
+      const errorMessage =
         err instanceof Error
           ? err.message
-          : "Something went wrong."
-      );
-    } finally {
+          : "Something went wrong.";
+
+      setError(errorMessage);
+      toast.error(errorMessage);
+    }finally {
       setLoading(false);
     }
   };

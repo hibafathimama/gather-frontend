@@ -14,6 +14,9 @@ import {
   CheckCircle2,
   Calendar,
   Filter,
+  UserRound,
+  MapPin,
+  Clock,
 } from "lucide-react";
 import api from "@/lib/api";
 import AdminNavbar from "@/components/AdminNavbar";
@@ -106,7 +109,6 @@ export default function AdminBookingsPage() {
         `/admin/bookings/${booking._id}/cancel`
       );
 
-      // Update booking status immediately
       setBookings((previousBookings) =>
         previousBookings.map((item) =>
           item._id === booking._id
@@ -153,13 +155,11 @@ export default function AdminBookingsPage() {
         booking.bookingId || booking._id
       ).toLowerCase();
 
-      // Search condition
       const matchesSearch =
         customer.includes(searchText) ||
         eventName.includes(searchText) ||
         bookingId.includes(searchText);
 
-      // Status condition
       const isCancelled =
         booking.status?.toLowerCase() === "cancelled";
 
@@ -172,10 +172,12 @@ export default function AdminBookingsPage() {
     });
   }, [bookings, search, statusFilter]);
 
-  // Count active bookings
+  // Statistics
   const activeBookingsCount = bookings.filter(
     (booking) => booking.status?.toLowerCase() !== "cancelled"
   ).length;
+
+  const cancelledBookingsCount = bookings.length - activeBookingsCount;
 
   // Format date
   const formatDate = (date?: string) => {
@@ -199,6 +201,175 @@ export default function AdminBookingsPage() {
     return `₹${amount.toLocaleString("en-IN")}`;
   };
 
+  // Customer name
+  const getCustomerName = (user?: UserType | null) => {
+    if (!user) return "User unavailable";
+
+    return (
+      `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+      "Unknown customer"
+    );
+  };
+
+  // Booking status
+  const isBookingCancelled = (booking: BookingType) =>
+    booking.status?.toLowerCase() === "cancelled";
+
+  // Responsive booking card
+  const renderBookingCard = (booking: BookingType) => {
+    const isCancelled = isBookingCancelled(booking);
+    const isCancelling = cancellingId === booking._id;
+
+    return (
+      <article
+        key={booking._id}
+        className="flex min-w-0 flex-col rounded-2xl border border-[#F5D8B3] bg-white p-4 shadow-sm transition hover:shadow-md sm:p-5"
+      >
+        {/* Booking Header */}
+        <div className="mb-4 flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+              Booking ID
+            </p>
+
+            <p className="mt-1 break-all font-mono text-xs font-bold text-[#3E000C]">
+              {booking.bookingId || booking._id}
+            </p>
+          </div>
+
+          <span
+            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+              isCancelled
+                ? "border-red-200 bg-red-100 text-red-800"
+                : "border-emerald-200 bg-emerald-100 text-emerald-800"
+            }`}
+          >
+            {booking.status || "confirmed"}
+          </span>
+        </div>
+
+        {/* Customer Information */}
+        <div className="mb-4 flex items-start gap-3 border-t border-stone-100 pt-4">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FFECD1] text-[#3E000C]">
+            <UserRound className="h-4 w-4" />
+          </span>
+
+          <div className="min-w-0">
+            <p className="break-words text-sm font-bold text-stone-900">
+              {getCustomerName(booking.user)}
+            </p>
+
+            <p className="mt-0.5 break-all text-xs text-stone-500">
+              {booking.user?.email || "Email unavailable"}
+            </p>
+          </div>
+        </div>
+
+        {/* Event Information */}
+        <div className="space-y-3 border-t border-stone-100 pt-4">
+          <div>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+              Event
+            </p>
+
+            <p className="break-words text-sm font-bold text-[#3E000C]">
+              {booking.event?.eventName || "Event unavailable"}
+            </p>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[#3E000C]" />
+
+            <div>
+              <p className="text-xs font-semibold text-stone-700">
+                {formatDate(booking.event?.date)}
+              </p>
+
+              {booking.event?.time && (
+                <p className="mt-0.5 text-xs text-stone-500">
+                  {booking.event.time}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {(booking.event?.location || booking.event?.venue) && (
+            <div className="flex items-start gap-3">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#3E000C]" />
+
+              <p className="break-words text-xs text-stone-600">
+                {booking.event.location || booking.event.venue}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Ticket Details */}
+        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-stone-100 pt-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+              Tickets
+            </p>
+
+            <p className="mt-1 text-sm font-bold text-stone-800">
+              {booking.quantity ?? "N/A"} seats
+            </p>
+
+            {booking.ticketType && (
+              <p className="mt-0.5 break-words text-[10px] font-bold uppercase tracking-wider text-[#3E000C]">
+                {booking.ticketType}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+              Total Price
+            </p>
+
+            <p className="mt-1 text-sm font-bold text-[#3E000C]">
+              {formatAmount(booking.totalPrice)}
+            </p>
+          </div>
+        </div>
+
+        {/* Booking Date */}
+        <div className="mt-4 flex items-center gap-2 border-t border-stone-100 pt-3">
+          <Clock className="h-3.5 w-3.5 text-stone-400" />
+
+          <p className="text-xs text-stone-500">
+            Booked on {formatDate(booking.createdAt)}
+          </p>
+        </div>
+
+        {/* Cancel Action */}
+        <div className="mt-4 border-t border-stone-100 pt-4">
+          {isCancelled ? (
+            <div className="flex items-center justify-center gap-2 rounded-xl bg-stone-100 px-3 py-3 text-xs font-semibold text-stone-500">
+              <XCircle className="h-4 w-4" />
+              Already Cancelled
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handleCancelBooking(booking)}
+              disabled={cancellingId !== null}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isCancelling ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Ban className="h-4 w-4" />
+              )}
+
+              {isCancelling ? "Cancelling..." : "Cancel Booking"}
+            </button>
+          )}
+        </div>
+      </article>
+    );
+  };
+
   return (
     <>
       <style jsx global>{`
@@ -212,21 +383,21 @@ export default function AdminBookingsPage() {
 
       <AdminNavbar />
 
-      <main className="min-h-screen bg-[#FFECD1] px-4 py-10 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1] md:p-12">
-        <div className="mx-auto max-w-7xl">
+      <main className="min-h-screen w-full overflow-x-hidden bg-[#FFECD1] px-3 py-6 text-stone-900 selection:bg-[#3E000C] selection:text-[#FFECD1] sm:px-5 sm:py-8 md:px-8 md:py-10 lg:p-12">
+        <div className="mx-auto w-full max-w-7xl">
 
-          {/* Header Section */}
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#F5D8B3] pb-6">
-            <div>
-              <span className="mb-1 inline-block rounded-lg bg-[#3E000C]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#3E000C]">
+          {/* Header */}
+          <div className="mb-6 flex flex-col gap-4 border-b border-[#F5D8B3] pb-6 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <span className="mb-2 inline-block rounded-lg bg-[#3E000C]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#3E000C] sm:text-[11px]">
                 Platform Operations
               </span>
 
-              <h1 className="editorial-heading text-4xl font-bold tracking-tight text-[#3E000C] sm:text-5xl">
+              <h1 className="editorial-heading text-3xl font-bold tracking-tight text-[#3E000C] sm:text-4xl md:text-5xl">
                 Manage Bookings
               </h1>
 
-              <p className="mt-1 text-sm text-stone-600">
+              <p className="mt-1 max-w-xl text-xs leading-relaxed text-stone-600 sm:text-sm">
                 View customer bookings, verify ticket credentials, and
                 moderate active reservations.
               </p>
@@ -234,24 +405,24 @@ export default function AdminBookingsPage() {
 
             <Link
               href="/admin/dashboard"
-              className="inline-flex items-center gap-2 rounded-2xl border border-[#F5D8B3] bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#3E000C] shadow-sm transition-all hover:bg-stone-50"
+              className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-2xl border border-[#F5D8B3] bg-white px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#3E000C] shadow-sm transition-all hover:bg-stone-50 sm:px-5"
             >
               <ArrowLeft className="h-4 w-4" />
               Dashboard
             </Link>
           </div>
 
-          {/* Stats Overview Cards */}
-          <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {/* Statistics */}
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:mb-8 sm:grid-cols-2 sm:gap-5">
 
             {/* Total Bookings */}
-            <div className="rounded-3xl border border-[#F5D8B3] bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-[#F5D8B3] bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6">
               <div className="mb-3 flex items-center justify-between">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFECD1] text-[#3E000C]">
                   <Ticket className="h-5 w-5" />
                 </span>
 
-                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
                   Total
                 </span>
               </div>
@@ -260,19 +431,19 @@ export default function AdminBookingsPage() {
                 Total Bookings
               </p>
 
-              <p className="editorial-heading mt-1 text-4xl font-bold text-[#3E000C]">
+              <p className="editorial-heading mt-1 text-3xl font-bold text-[#3E000C] sm:text-4xl">
                 {bookings.length}
               </p>
             </div>
 
             {/* Active Bookings */}
-            <div className="rounded-3xl border border-[#F5D8B3] bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-[#F5D8B3] bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6">
               <div className="mb-3 flex items-center justify-between">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFECD1] text-[#3E000C]">
                   <BookmarkCheck className="h-5 w-5" />
                 </span>
 
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
                   Active
                 </span>
               </div>
@@ -281,20 +452,24 @@ export default function AdminBookingsPage() {
                 Active Bookings
               </p>
 
-              <p className="editorial-heading mt-1 text-4xl font-bold text-[#3E000C]">
+              <p className="editorial-heading mt-1 text-3xl font-bold text-[#3E000C] sm:text-4xl">
                 {activeBookingsCount}
+              </p>
+
+              <p className="mt-1 text-xs text-stone-400">
+                {cancelledBookingsCount} cancelled bookings
               </p>
             </div>
           </div>
 
-          {/* Search & Content Container */}
-          <section className="rounded-3xl border border-[#F5D8B3] bg-white p-8 shadow-sm">
+          {/* Search and Bookings */}
+          <section className="min-w-0 rounded-2xl border border-[#F5D8B3] bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6 md:p-8">
 
             {/* Search and Filter */}
             <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-[1fr_250px]">
 
-              {/* Search Input */}
-              <div>
+              {/* Search */}
+              <div className="min-w-0">
                 <label
                   htmlFor="booking-search"
                   className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]"
@@ -308,8 +483,8 @@ export default function AdminBookingsPage() {
                     type="text"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search by booking ID, customer name, email, or event..."
-                    className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pl-11 text-sm text-stone-900 placeholder-stone-400 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                    placeholder="Search by booking ID, customer, or event..."
+                    className="w-full min-w-0 rounded-xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pl-11 text-sm text-stone-900 placeholder-stone-400 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10 sm:rounded-2xl"
                   />
 
                   <Search className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-stone-400" />
@@ -317,7 +492,7 @@ export default function AdminBookingsPage() {
               </div>
 
               {/* Status Filter */}
-              <div>
+              <div className="min-w-0">
                 <label
                   htmlFor="status-filter"
                   className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#3E000C]"
@@ -332,7 +507,7 @@ export default function AdminBookingsPage() {
                     onChange={(event) =>
                       setStatusFilter(event.target.value)
                     }
-                    className="w-full appearance-none rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pr-10 text-sm font-medium text-stone-700 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10"
+                    className="w-full appearance-none rounded-xl border border-stone-200 bg-stone-50/50 px-4 py-3.5 pr-10 text-sm font-medium text-stone-700 outline-none transition-all focus:border-[#3E000C] focus:bg-white focus:ring-4 focus:ring-[#3E000C]/10 sm:rounded-2xl"
                   >
                     <option value="all">All Bookings</option>
                     <option value="active">Active Bookings</option>
@@ -344,171 +519,186 @@ export default function AdminBookingsPage() {
               </div>
             </div>
 
-            {/* Error Message */}
+            {/* Error */}
             {error && (
-              <div className="mb-6 flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 shadow-sm">
-                <AlertCircle className="h-5 w-5 shrink-0" />
-                {error}
+              <div className="mb-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700 sm:items-center sm:p-4 sm:text-sm">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 sm:mt-0" />
+                <span className="break-words">{error}</span>
               </div>
             )}
 
-            {/* Success Message */}
+            {/* Success */}
             {success && (
-              <div className="mb-6 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800 shadow-sm">
-                <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
-                {success}
+              <div className="mb-5 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium text-emerald-800 sm:items-center sm:p-4 sm:text-sm">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 sm:mt-0" />
+                <span className="break-words">{success}</span>
               </div>
             )}
 
-            {/* Table States */}
+            {/* Loading */}
             {loading ? (
-              <div className="flex items-center justify-center py-20 font-medium text-stone-600">
+              <div className="flex items-center justify-center py-16 text-sm font-medium text-stone-600">
                 <Loader2 className="mr-2 h-5 w-5 animate-spin text-[#3E000C]" />
                 Loading bookings directory...
               </div>
             ) : filteredBookings.length === 0 ? (
-              <div className="rounded-2xl border border-stone-200 bg-stone-50/50 p-12 text-center">
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/50 p-8 text-center sm:p-12">
                 <Ticket className="mx-auto mb-3 h-10 w-10 text-stone-400" />
 
-                <p className="font-medium text-stone-600">
+                <p className="text-sm font-medium text-stone-600">
                   {search || statusFilter !== "all"
                     ? "No bookings found for the selected search or filter."
                     : "No bookings found."}
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1150px] text-left">
-                  <thead>
-                    <tr className="border-b border-stone-200 bg-stone-50/70 text-xs font-bold uppercase tracking-wider text-stone-500">
-                      <th className="px-4 py-3.5">Booking ID</th>
-                      <th className="px-4 py-3.5">Customer</th>
-                      <th className="px-4 py-3.5">Event</th>
-                      <th className="px-4 py-3.5">Tickets</th>
-                      <th className="px-4 py-3.5">Total Price</th>
-                      <th className="px-4 py-3.5">Booked On</th>
-                      <th className="px-4 py-3.5">Status</th>
-                      <th className="px-4 py-3.5">Actions</th>
-                    </tr>
-                  </thead>
+              <>
+                {/* Mobile and Tablet Cards */}
+                <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
+                  {filteredBookings.map((booking) =>
+                    renderBookingCard(booking)
+                  )}
+                </div>
 
-                  <tbody className="divide-y divide-stone-100">
-                    {filteredBookings.map((booking) => {
-                      const customerName = booking.user
-                        ? `${booking.user.firstName || ""} ${
-                            booking.user.lastName || ""
-                          }`.trim() || "Unknown customer"
-                        : "User unavailable";
+                {/* Desktop Table */}
+                <div className="hidden overflow-x-auto lg:block">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-stone-200 bg-stone-50/70 text-xs font-bold uppercase tracking-wider text-stone-500">
+                        <th className="whitespace-nowrap px-4 py-3.5">
+                          Booking ID
+                        </th>
 
-                      const isCancelled =
-                        booking.status?.toLowerCase() === "cancelled";
+                        <th className="px-4 py-3.5">Customer</th>
 
-                      const isCancelling =
-                        cancellingId === booking._id;
+                        <th className="px-4 py-3.5">Event</th>
 
-                      return (
-                        <tr
-                          key={booking._id}
-                          className="transition hover:bg-stone-50/50"
-                        >
-                          {/* Booking ID */}
-                          <td className="px-4 py-4 font-mono text-xs font-bold text-[#3E000C]">
-                            {booking.bookingId || booking._id}
-                          </td>
+                        <th className="px-4 py-3.5">Tickets</th>
 
-                          {/* Customer */}
-                          <td className="px-4 py-4">
-                            <p className="font-bold text-stone-900">
-                              {customerName}
-                            </p>
+                        <th className="px-4 py-3.5">Total Price</th>
 
-                            <p className="mt-0.5 text-xs font-semibold text-stone-500">
-                              {booking.user?.email || "Email unavailable"}
-                            </p>
-                          </td>
+                        <th className="px-4 py-3.5">Booked On</th>
 
-                          {/* Event */}
-                          <td className="px-4 py-4">
-                            <p className="font-bold text-stone-900">
-                              {booking.event?.eventName || "Event unavailable"}
-                            </p>
+                        <th className="px-4 py-3.5">Status</th>
 
-                            <p className="mt-0.5 flex items-center gap-1 text-xs text-stone-500">
-                              <Calendar className="h-3 w-3" />
-                              {formatDate(booking.event?.date)}
-                            </p>
-                          </td>
+                        <th className="px-4 py-3.5">Actions</th>
+                      </tr>
+                    </thead>
 
-                          {/* Tickets */}
-                          <td className="px-4 py-4 text-sm text-stone-700">
-                            <p className="font-semibold">
-                              {booking.quantity ?? "Not available"} seats
-                            </p>
+                    <tbody className="divide-y divide-stone-100">
+                      {filteredBookings.map((booking) => {
+                        const customerName = getCustomerName(booking.user);
 
-                            {booking.ticketType && (
-                              <p className="mt-0.5 text-xs font-bold uppercase tracking-wider text-[#3E000C]">
-                                {booking.ticketType}
+                        const isCancelled =
+                          isBookingCancelled(booking);
+
+                        const isCancelling =
+                          cancellingId === booking._id;
+
+                        return (
+                          <tr
+                            key={booking._id}
+                            className="transition hover:bg-stone-50/50"
+                          >
+                            {/* Booking ID */}
+                            <td className="whitespace-nowrap px-4 py-4 font-mono text-xs font-bold text-[#3E000C]">
+                              {booking.bookingId || booking._id}
+                            </td>
+
+                            {/* Customer */}
+                            <td className="px-4 py-4">
+                              <p className="font-bold text-stone-900">
+                                {customerName}
                               </p>
-                            )}
-                          </td>
 
-                          {/* Total Price */}
-                          <td className="px-4 py-4 text-sm font-bold text-[#3E000C]">
-                            {formatAmount(booking.totalPrice)}
-                          </td>
+                              <p className="mt-0.5 text-xs font-semibold text-stone-500">
+                                {booking.user?.email || "Email unavailable"}
+                              </p>
+                            </td>
 
-                          {/* Booked On */}
-                          <td className="px-4 py-4 text-sm font-medium text-stone-600">
-                            {formatDate(booking.createdAt)}
-                          </td>
+                            {/* Event */}
+                            <td className="px-4 py-4">
+                              <p className="font-bold text-stone-900">
+                                {booking.event?.eventName || "Event unavailable"}
+                              </p>
 
-                          {/* Status */}
-                          <td className="px-4 py-4">
-                            <span
-                              className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-                                isCancelled
-                                  ? "border-red-200 bg-red-100 text-red-800"
-                                  : "border-emerald-200 bg-emerald-100 text-emerald-800"
-                              }`}
-                            >
-                              {booking.status || "confirmed"}
-                            </span>
-                          </td>
+                              <p className="mt-0.5 flex items-center gap-1 text-xs text-stone-500">
+                                <Calendar className="h-3 w-3" />
+                                {formatDate(booking.event?.date)}
+                              </p>
+                            </td>
 
-                          {/* Actions */}
-                          <td className="px-4 py-4">
-                            {isCancelled ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-stone-400">
-                                <XCircle className="h-3.5 w-3.5" />
-                                Already cancelled
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleCancelBooking(booking)
-                                }
-                                disabled={cancellingId !== null}
-                                className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            {/* Tickets */}
+                            <td className="px-4 py-4 text-sm text-stone-700">
+                              <p className="font-semibold">
+                                {booking.quantity ?? "Not available"} seats
+                              </p>
+
+                              {booking.ticketType && (
+                                <p className="mt-0.5 text-xs font-bold uppercase tracking-wider text-[#3E000C]">
+                                  {booking.ticketType}
+                                </p>
+                              )}
+                            </td>
+
+                            {/* Total Price */}
+                            <td className="whitespace-nowrap px-4 py-4 text-sm font-bold text-[#3E000C]">
+                              {formatAmount(booking.totalPrice)}
+                            </td>
+
+                            {/* Booked On */}
+                            <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-stone-600">
+                              {formatDate(booking.createdAt)}
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-4 py-4">
+                              <span
+                                className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                                  isCancelled
+                                    ? "border-red-200 bg-red-100 text-red-800"
+                                    : "border-emerald-200 bg-emerald-100 text-emerald-800"
+                                }`}
                               >
-                                {isCancelling ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <Ban className="h-3.5 w-3.5" />
-                                )}
+                                {booking.status || "confirmed"}
+                              </span>
+                            </td>
 
-                                {isCancelling
-                                  ? "Cancelling..."
-                                  : "Cancel Booking"}
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            {/* Actions */}
+                            <td className="px-4 py-4">
+                              {isCancelled ? (
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-stone-400">
+                                  <XCircle className="h-3.5 w-3.5" />
+                                  Already cancelled
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleCancelBooking(booking)
+                                  }
+                                  disabled={cancellingId !== null}
+                                  className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-red-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {isCancelling ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Ban className="h-3.5 w-3.5" />
+                                  )}
+
+                                  {isCancelling
+                                    ? "Cancelling..."
+                                    : "Cancel Booking"}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </section>
         </div>

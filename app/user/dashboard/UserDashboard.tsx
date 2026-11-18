@@ -958,12 +958,12 @@ export default function UserDashboard() {
             ) : (
               <>
                 <div
-                  className={
-                    view === "list"
-                      ? "space-y-4"
-                      : "grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
-                  }
-                >
+                    className={
+                      view === "list"
+                        ? "space-y-4"
+                        : "grid grid-cols-1 gap-5 sm:grid-cols-3"
+                    }
+                  >
                   {events.map((event, index) => {
                     const imageUrl = getImageUrl(event.image);
                     const d = new Date(event.date);

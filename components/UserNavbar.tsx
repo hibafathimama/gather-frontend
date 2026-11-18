@@ -56,7 +56,8 @@ export default function UserNavbar() {
         }
 
         const backendUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000/api";
+          process.env.NEXT_PUBLIC_BACKEND_URL ||
+          "http://localhost:5000/api";
 
         const response = await fetch(`${backendUrl}/notifications`, {
           method: "GET",
@@ -99,13 +100,19 @@ export default function UserNavbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#F5D8B3] bg-white/95 backdrop-blur">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 w-full border-b border-[#F5D8B3] bg-white/95 backdrop-blur">
+
+      <nav className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:px-6 lg:px-8">
+
         {/* Brand */}
-        <Link href="/user/dashboard" className="flex items-center gap-3">
+        <Link
+          href="/user/dashboard"
+          className="flex shrink-0 items-center gap-2 sm:gap-3"
+        >
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3E000C] text-[#FFECD1]">
             <Ticket className="h-5 w-5" />
           </div>
+
           <div className="leading-tight">
             <h1 className="text-lg font-bold tracking-tight text-[#3E000C]">
               Gather
@@ -138,7 +145,7 @@ export default function UserNavbar() {
         </div>
 
         {/* Notifications and logout */}
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Link
             href="/notifications"
             aria-label={`Notifications${
@@ -162,7 +169,7 @@ export default function UserNavbar() {
 
           <button
             onClick={handleLogout}
-            className="flex h-10 items-center gap-2 rounded-lg border border-[#3E000C]/25 px-3.5 text-sm font-medium text-[#3E000C] transition-colors hover:bg-[#3E000C] hover:text-white"
+            className="flex h-10 items-center gap-2 rounded-lg border border-[#3E000C]/25 px-2.5 text-sm font-medium text-[#3E000C] transition-colors hover:bg-[#3E000C] hover:text-white sm:px-3.5"
           >
             <LogOut className="h-4 w-4" />
             <span className="hidden sm:inline">Logout</span>
@@ -171,7 +178,8 @@ export default function UserNavbar() {
       </nav>
 
       {/* Mobile navigation */}
-      <div className="flex gap-2 overflow-x-auto border-t border-stone-100 bg-[#FFECD1]/30 px-4 py-2 md:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="grid grid-cols-2 gap-2 border-t border-stone-100 bg-[#FFECD1]/30 px-4 py-3 md:hidden">
+
         {navLinks.map(({ name, href, Icon }) => {
           const isActive = pathname === href;
 
@@ -180,17 +188,18 @@ export default function UserNavbar() {
               key={href}
               href={href}
               aria-current={isActive ? "page" : undefined}
-              className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+              className={`flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-xs font-medium transition-colors ${
                 isActive
                   ? "bg-[#3E000C] text-[#FFECD1]"
                   : "border border-stone-200 bg-white text-stone-700 hover:border-[#3E000C]"
               }`}
             >
-              <Icon className="h-3.5 w-3.5" />
-              {name}
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{name}</span>
             </Link>
           );
         })}
+
       </div>
     </header>
   );
